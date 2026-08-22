@@ -1,1350 +1,1189 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Симулятор бытовых дел</title>
     <style>
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-
         body {
-            background: #1a1a2e;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            margin: 0;
             min-height: 100vh;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            touch-action: manipulation;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 900px;
-            aspect-ratio: 4 / 3;
-            background: #87CEEB;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-        }
-
-        .screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            background: #87CEEB;
-        }
-
-        .screen.active {
-            display: block;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: transparent;
-        }
-
-        /* Главный экран - кнопки */
-        #main-screen {
-            position: relative;
-        }
-
-        #buttons-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-            padding: 8px 10px 12px 10px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
-            z-index: 10;
+            place-items: center;
+            background: linear-gradient(#9fd9ff 0 38%, #6fc55a 38% 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none;
         }
-
-        .task-btn,
-        .danger-btn {
-            padding: 8px 4px;
-            border: none;
-            border-radius: 12px;
-            font-size: clamp(11px, 2.2vw, 18px);
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            touch-action: manipulation;
-            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            white-space: nowrap;
-            letter-spacing: 0.3px;
+        #game {
+            width: min(100vw, 800px);
+            aspect-ratio: 4/3;
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(180deg, #87CEEB 0%, #B5E6F7 45%, #F0F8A0 65%, #7CCD7C 72%, #5BAF5B 100%);
+            touch-action: none;
         }
-
-        .task-btn {
-            background: #ffd93d;
-            color: #333;
-        }
-
-        .task-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-        }
-
-        .task-btn.done {
-            background: #6bcb77;
-            color: #fff;
-            text-decoration: line-through;
-            opacity: 0.7;
-        }
-
-        .task-btn.done::after {
-            content: " ✅";
-        }
-
-        .danger-btn {
-            background: #ff6b6b;
-            color: #fff;
-            animation: pulse-danger 1.5s infinite;
-        }
-
-        .danger-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-        }
-
-        @keyframes pulse-danger {
-            0%,
-            100% {
-                background: #ff6b6b;
-            }
-            50% {
-                background: #ee5a24;
+        @media (max-width: 600px) {
+            #game {
+                border-radius: 0;
+                width: 100vw;
+                aspect-ratio: unset;
+                height: 100vh;
             }
         }
 
-        /* Статус внутри мини-игры */
-        #task-status {
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        #buttons {
             position: absolute;
-            bottom: 20px;
+            bottom: 12px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: clamp(14px, 3vw, 24px);
-            font-weight: bold;
-            z-index: 20;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0 8px;
+            z-index: 10;
+            width: 96%;
+            max-width: 720px;
             pointer-events: none;
+        }
+        #buttons .btn {
+            pointer-events: auto;
+            flex: 1 0 calc(20% - 8px);
+            min-width: 60px;
+            max-width: 110px;
+            padding: 6px 4px;
+            border: none;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(180deg, #5DADE2, #2E86C1);
+            box-shadow: 0 4px 0 #1A5276, 0 6px 16px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.1s ease;
             text-align: center;
-            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            font-family: inherit;
+            touch-action: manipulation;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+        #buttons .btn .icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+        #buttons .btn .label {
+            font-size: 9px;
+            opacity: 0.95;
             white-space: nowrap;
         }
+        #buttons .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #1A5276;
+        }
+        #buttons .btn:disabled {
+            opacity: 0.5;
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #1A5276;
+            cursor: not-allowed;
+        }
+        #buttons .btn.done {
+            background: linear-gradient(180deg, #58D68D, #28B463);
+            box-shadow: 0 4px 0 #1E8449;
+        }
+        #buttons .btn.done .label::after {
+            content: ' ✅';
+            font-size: 10px;
+        }
 
-        /* Победный экран поверх */
-        #win-overlay {
+        @media (max-width: 600px) {
+            #buttons {
+                gap: 4px;
+                bottom: 8px;
+                padding: 0 4px;
+            }
+            #buttons .btn {
+                min-width: 44px;
+                padding: 4px 2px;
+                border-radius: 10px;
+                font-size: 9px;
+            }
+            #buttons .btn .icon {
+                font-size: 14px;
+            }
+            #buttons .btn .label {
+                font-size: 7px;
+                white-space: normal;
+                line-height: 1.1;
+            }
+            #buttons .btn.done .label::after {
+                content: '✅';
+                font-size: 8px;
+            }
+        }
+        @media (max-width: 420px) {
+            #buttons .btn {
+                min-width: 34px;
+                padding: 3px 1px;
+                font-size: 7px;
+                border-radius: 8px;
+            }
+            #buttons .btn .icon {
+                font-size: 11px;
+            }
+            #buttons .btn .label {
+                font-size: 6px;
+            }
+        }
+
+        #status {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 30;
+            top: 10px;
+            right: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+        }
+        #status span {
+            color: #F1C40F;
+        }
+        @media (max-width: 600px) {
+            #status {
+                font-size: 10px;
+                padding: 4px 10px;
+                top: 6px;
+                right: 8px;
+            }
+        }
+
+        #victory {
+            position: absolute;
+            inset: 0;
             display: none;
             justify-content: center;
             align-items: center;
-            flex-direction: column;
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(4px);
+            z-index: 20;
+            animation: fadeIn 0.6s ease;
         }
-
-        #win-overlay.show {
+        #victory.show {
             display: flex;
         }
-
-        #win-overlay h1 {
-            color: #ffd700;
-            font-size: clamp(32px, 8vw, 64px);
-            text-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
-            margin-bottom: 10px;
-            animation: bounce-win 1s infinite;
-        }
-
-        #win-overlay p {
-            color: #fff;
-            font-size: clamp(18px, 4vw, 32px);
-        }
-
-        @keyframes bounce-win {
-            0%,
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
             100% {
+                opacity: 1;
                 transform: scale(1);
             }
-            50% {
+        }
+        #victoryCard {
+            background: #fffdf8;
+            border-radius: 28px;
+            padding: 30px 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: bounceIn 0.6s ease;
+            max-width: 90vw;
+        }
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            60% {
                 transform: scale(1.05);
             }
-        }
-
-        /* Адаптив для телефонов */
-        @media (max-width: 600px) {
-            #buttons-container {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 4px;
-                padding: 6px 8px 10px 8px;
-            }
-
-            .task-btn,
-            .danger-btn {
-                padding: 6px 2px;
-                border-radius: 10px;
-                font-size: clamp(10px, 2.5vw, 14px);
-            }
-
-            #task-status {
-                bottom: 12px;
-                padding: 6px 14px;
-                font-size: clamp(12px, 3vw, 18px);
+            100% {
+                transform: scale(1);
+                opacity: 1;
             }
         }
-
-        @media (max-width: 400px) {
-            #buttons-container {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 4px;
-                padding: 6px 6px 10px 6px;
-            }
-
-            .task-btn,
-            .danger-btn {
-                font-size: clamp(9px, 2.8vw, 12px);
-                padding: 5px 2px;
-            }
+        #victoryCard .trophy {
+            font-size: 70px;
+            display: block;
         }
-
-        /* Скрываем скролл */
-        ::-webkit-scrollbar {
-            display: none;
+        #victoryCard h1 {
+            font-size: 32px;
+            margin: 8px 0 4px;
+            background: linear-gradient(135deg, #F1C40F, #F39C12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #victoryCard p {
+            font-size: 18px;
+            color: #555;
+            margin: 8px 0 16px;
+        }
+        #victoryCard .btn-restart {
+            padding: 12px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #F1C40F, #F39C12);
+            box-shadow: 0 4px 0 #B7950B;
+            cursor: pointer;
+            transition: all 0.1s;
+            font-family: inherit;
+        }
+        #victoryCard .btn-restart:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #B7950B;
+        }
+        @media (max-width: 500px) {
+            #victoryCard {
+                padding: 20px;
+            }
+            #victoryCard .trophy {
+                font-size: 50px;
+            }
+            #victoryCard h1 {
+                font-size: 24px;
+            }
+            #victoryCard p {
+                font-size: 15px;
+            }
+            #victoryCard .btn-restart {
+                font-size: 15px;
+                padding: 10px 28px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- Главный экран -->
-        <div id="main-screen" class="screen active">
-            <canvas id="mainCanvas"></canvas>
-            <div id="buttons-container">
-                <button class="task-btn" data-task="mow">🌿 Покосить газон</button>
-                <button class="task-btn" data-task="feed">🐕 Покормить Лео</button>
-                <button class="task-btn" data-task="fix">🔧 Починить машину</button>
-                <button class="task-btn" data-task="train">💪 Потренироваться</button>
-                <button class="task-btn" data-task="kiss">❤️ Поцеловать жену</button>
-                <button class="danger-btn" data-task="punish">⚠️ Сюда не лезь</button>
+    <div id="game">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div id="status">Выполнено: <span id="taskCount">0</span> / 5</div>
+
+        <div id="buttons">
+            <button class="btn" data-task="0"><span class="icon">🌿</span><span class="label">Покосить газон</span></button>
+            <button class="btn" data-task="1"><span class="icon">🐕</span><span class="label">Покормить Лео</span></button>
+            <button class="btn" data-task="2"><span class="icon">🔧</span><span class="label">Починить машину</span></button>
+            <button class="btn" data-task="3"><span class="icon">💪</span><span class="label">Потренироваться</span></button>
+            <button class="btn" data-task="4"><span class="icon">❤️</span><span class="label">Поцеловать жену</span></button>
+        </div>
+
+        <div id="victory">
+            <div id="victoryCard">
+                <span class="trophy">🏆</span>
+                <h1>Все дела сделаны!</h1>
+                <p>Ты — супер-хозяин! 🎉</p>
+                <button class="btn-restart" id="restartBtn">🔄 Сыграть снова</button>
             </div>
-        </div>
-
-        <!-- Экран мини-игры -->
-        <div id="game-screen" class="screen">
-            <canvas id="gameCanvas"></canvas>
-            <div id="task-status">Выполняется...</div>
-        </div>
-
-        <!-- Победный оверлей -->
-        <div id="win-overlay">
-            <h1>🏆 ПОБЕДА!</h1>
-            <p>Жена вручает тебе кубок! 🎉</p>
         </div>
     </div>
 
     <script>
-        // ============================================================
-        // 1. ЗВУКИ через Web Audio API (синтезированные)
-        // ============================================================
-        class SoundFX {
-            constructor() {
-                this.ctx = null;
-                this.enabled = true;
-                try {
-                    this.ctx = new(window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    this.enabled = false;
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = 800,
+                H = 600;
+
+            const tasks = [false, false, false, false, false];
+            let animating = false;
+            let animTimer = null;
+            let victoryShown = false;
+            let frame = 0;
+            let particles = [];
+
+            const man = {
+                x: 400,
+                y: 360,
+                action: 'idle',
+                walkDir: 1,
+                speed: 2
+            };
+            const wife = { x: 490, y: 350, visible: false };
+            const dog = { x: 310, y: 375, visible: false };
+            const car = { x: 540, y: 365, visible: false };
+            const lawnmower = { x: 0, y: 0, visible: false };
+            const foodBowl = { x: 0, y: 0, visible: false };
+
+            const buttons = document.querySelectorAll('.btn');
+            const taskCount = document.getElementById('taskCount');
+            const victory = document.getElementById('victory');
+            const restartBtn = document.getElementById('restartBtn');
+
+            function updateUI() {
+                const done = tasks.filter(Boolean).length;
+                taskCount.textContent = done;
+                buttons.forEach((btn, i) => {
+                    if (i < 5) {
+                        if (tasks[i]) {
+                            btn.classList.add('done');
+                            btn.disabled = true;
+                        } else {
+                            btn.classList.remove('done');
+                            btn.disabled = animating;
+                        }
+                    }
+                });
+                if (done === 5 && !victoryShown) {
+                    showVictory();
                 }
             }
 
-            resume() {
-                if (this.ctx && this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+            function addParticles(type, x, y, count, opts) {
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.random() * 2 - 1) * (opts?.spread || 1.5);
+                    const speed = 50 + Math.random() * (opts?.speed || 120);
+                    const size = 4 + Math.random() * (opts?.size || 8);
+                    particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed * (opts?.dirX || 1),
+                        vy: -Math.sin(angle) * speed * 0.7 - (opts?.rise || 40),
+                        life: 60 + Math.random() * 40,
+                        maxLife: 60 + Math.random() * 40,
+                        type,
+                        size,
+                        color: opts?.color || '#F1C40F',
+                        rot: Math.random() * Math.PI * 2
+                    });
                 }
             }
 
-            play(type) {
-                if (!this.enabled || !this.ctx) return;
-                this.resume();
-                const now = this.ctx.currentTime;
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx * 0.016;
+                    p.y += p.vy * 0.016;
+                    p.vy += 20 * 0.016;
+                    p.life--;
+                    if (p.life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+                if (particles.length > 300) particles.splice(0, particles.length - 300);
+            }
 
-                switch (type) {
-                    case 'mow': {
-                        // Газонокосилка - шум с колебаниями
-                        const bufferSize = this.ctx.sampleRate * 0.6;
-                        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                        const data = buffer.getChannelData(0);
-                        for (let i = 0; i < bufferSize; i++) {
-                            const t = i / this.ctx.sampleRate;
-                            data[i] = (Math.random() * 2 - 1) * Math.sin(t * 200) * Math.sin(t * 50) * 0.3;
-                        }
-                        const source = this.ctx.createBufferSource();
-                        source.buffer = buffer;
-                        const gain = this.ctx.createGain();
-                        gain.gain.setValueAtTime(0.4, now);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-                        source.connect(gain);
-                        gain.connect(this.ctx.destination);
-                        source.start(now);
-                        source.stop(now + 0.6);
-                        break;
+            function drawParticles() {
+                for (const p of particles) {
+                    const alpha = p.life / p.maxLife;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(p.x, p.y);
+
+                    if (p.type === 'heart') {
+                        ctx.fillStyle = p.color;
+                        ctx.font = `${p.size * 1.5}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('❤️', 0, 0);
+                    } else if (p.type === 'spark') {
+                        ctx.fillStyle = p.color;
+                        ctx.shadowColor = p.color;
+                        ctx.shadowBlur = 12;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (p.type === 'grass') {
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(-p.size * 0.2, -p.size * 0.8, p.size * 0.4, p.size * 0.8);
+                        ctx.fillRect(-p.size * 0.1, -p.size * 0.6, p.size * 0.2, p.size * 0.6);
+                    } else if (p.type === 'star') {
+                        ctx.fillStyle = p.color;
+                        ctx.font = `${p.size}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('⭐', 0, 0);
+                    } else if (p.type === 'sweat') {
+                        ctx.fillStyle = '#85C1E9';
+                        ctx.globalAlpha = alpha * 0.7;
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, p.size * 0.3, p.size * 0.5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
                     }
-                    case 'bark': {
-                        // Лай - короткий шум с тоном
-                        const osc = this.ctx.createOscillator();
-                        osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(400, now);
-                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
-                        const gain2 = this.ctx.createGain();
-                        gain2.gain.setValueAtTime(0.5, now);
-                        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                        osc.connect(gain2);
-                        gain2.connect(this.ctx.destination);
-                        osc.start(now);
-                        osc.stop(now + 0.15);
-                        // Добавим шума
-                        const buf2 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
-                        const d2 = buf2.getChannelData(0);
-                        for (let i = 0; i < d2.length; i++) {
-                            d2[i] = (Math.random() * 2 - 1) * 0.2;
-                        }
-                        const src2 = this.ctx.createBufferSource();
-                        src2.buffer = buf2;
-                        const g2 = this.ctx.createGain();
-                        g2.gain.setValueAtTime(0.3, now);
-                        g2.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                        src2.connect(g2);
-                        g2.connect(this.ctx.destination);
-                        src2.start(now);
-                        src2.stop(now + 0.1);
-                        break;
-                    }
-                    case 'kiss': {
-                        // Поцелуй - быстрый щелчок с тоном
-                        const osc3 = this.ctx.createOscillator();
-                        osc3.type = 'sine';
-                        osc3.frequency.setValueAtTime(600, now);
-                        osc3.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-                        const g3 = this.ctx.createGain();
-                        g3.gain.setValueAtTime(0.3, now);
-                        g3.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                        osc3.connect(g3);
-                        g3.connect(this.ctx.destination);
-                        osc3.start(now);
-                        osc3.stop(now + 0.1);
-                        // Щелчок
-                        const buf3 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.02, this.ctx.sampleRate);
-                        const d3 = buf3.getChannelData(0);
-                        for (let i = 0; i < d3.length; i++) {
-                            d3[i] = (Math.random() * 2 - 1) * 0.4 * Math.exp(-i / 100);
-                        }
-                        const src3 = this.ctx.createBufferSource();
-                        src3.buffer = buf3;
-                        const g3b = this.ctx.createGain();
-                        g3b.gain.setValueAtTime(0.5, now);
-                        g3b.gain.exponentialRampToValueAtTime(0.01, now + 0.02);
-                        src3.connect(g3b);
-                        g3b.connect(this.ctx.destination);
-                        src3.start(now);
-                        src3.stop(now + 0.02);
-                        break;
-                    }
-                    case 'hit': {
-                        // Удар дубинкой - ударный шум
-                        const buf4 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.3, this.ctx.sampleRate);
-                        const d4 = buf4.getChannelData(0);
-                        for (let i = 0; i < d4.length; i++) {
-                            d4[i] = (Math.random() * 2 - 1) * Math.exp(-i / 300) * 0.6;
-                        }
-                        const src4 = this.ctx.createBufferSource();
-                        src4.buffer = buf4;
-                        const g4 = this.ctx.createGain();
-                        g4.gain.setValueAtTime(0.7, now);
-                        g4.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                        src4.connect(g4);
-                        g4.connect(this.ctx.destination);
-                        src4.start(now);
-                        src4.stop(now + 0.3);
-                        // Низкий тон для эффекта
-                        const osc4 = this.ctx.createOscillator();
-                        osc4.type = 'sine';
-                        osc4.frequency.setValueAtTime(80, now);
-                        osc4.frequency.exponentialRampToValueAtTime(40, now + 0.2);
-                        const g4b = this.ctx.createGain();
-                        g4b.gain.setValueAtTime(0.5, now);
-                        g4b.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                        osc4.connect(g4b);
-                        g4b.connect(this.ctx.destination);
-                        osc4.start(now);
-                        osc4.stop(now + 0.2);
-                        break;
-                    }
-                    case 'win': {
-                        // Салюты - серия хлопков
-                        for (let i = 0; i < 6; i++) {
-                            const delay = i * 0.15;
-                            const osc5 = this.ctx.createOscillator();
-                            osc5.type = 'sine';
-                            osc5.frequency.setValueAtTime(300 + Math.random() * 400, now + delay);
-                            const g5 = this.ctx.createGain();
-                            g5.gain.setValueAtTime(0.2, now + delay);
-                            g5.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.15);
-                            osc5.connect(g5);
-                            g5.connect(this.ctx.destination);
-                            osc5.start(now + delay);
-                            osc5.stop(now + delay + 0.15);
-                            // Шумовой хлопок
-                            const buf5 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
-                            const d5 = buf5.getChannelData(0);
-                            for (let j = 0; j < d5.length; j++) {
-                                d5[j] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-j / 200);
-                            }
-                            const src5 = this.ctx.createBufferSource();
-                            src5.buffer = buf5;
-                            const g5b = this.ctx.createGain();
-                            g5b.gain.setValueAtTime(0.4, now + delay);
-                            g5b.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
-                            src5.connect(g5b);
-                            g5b.connect(this.ctx.destination);
-                            src5.start(now + delay);
-                            src5.stop(now + delay + 0.08);
-                        }
-                        break;
-                    }
-                    case 'train': {
-                        // Тяжелое дыхание/усилие - короткий шум
-                        const buf6 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.3, this.ctx.sampleRate);
-                        const d6 = buf6.getChannelData(0);
-                        for (let i = 0; i < d6.length; i++) {
-                            d6[i] = (Math.random() * 2 - 1) * 0.15 * Math.sin(i / 50) * Math.exp(-i / 1000);
-                        }
-                        const src6 = this.ctx.createBufferSource();
-                        src6.buffer = buf6;
-                        const g6 = this.ctx.createGain();
-                        g6.gain.setValueAtTime(0.3, now);
-                        g6.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                        src6.connect(g6);
-                        g6.connect(this.ctx.destination);
-                        src6.start(now);
-                        src6.stop(now + 0.3);
-                        break;
-                    }
-                    default:
-                        break;
+
+                    ctx.restore();
                 }
             }
-        }
 
-        // ============================================================
-        // 2. ОСНОВНАЯ ЛОГИКА ИГРЫ
-        // ============================================================
-        const sound = new SoundFX();
+            // ===== Отрисовка сцены =====
+            function drawScene() {
+                ctx.fillStyle = '#87CEEB';
+                ctx.fillRect(0, 0, W, H * 0.45);
 
-        // Состояние
-        const state = {
-            tasks: {
-                mow: false,
-                feed: false,
-                fix: false,
-                train: false,
-                kiss: false
-            },
-            currentTask: null, // 'mow', 'feed', 'fix', 'train', 'kiss', 'punish', 'win'
-            isPlaying: false,
-            animationFrame: null,
-            frame: 0,
-            // Для анимаций
-            animProgress: 0,
-            // Флаги для анимации персонажей
-            wifeVisible: false,
-            leoVisible: false,
-            carVisible: false,
-            grassCut: 0,
-            // Позиции
-            manX: 0.5,
-            manY: 0.5,
-        };
+                drawCloud(80, 60, 100);
+                drawCloud(550, 40, 80);
+                drawCloud(300, 100, 70);
 
-        // Ссылки на canvas
-        const mainCanvas = document.getElementById('mainCanvas');
-        const mainCtx = mainCanvas.getContext('2d');
-        const gameCanvas = document.getElementById('gameCanvas');
-        const gameCtx = gameCanvas.getContext('2d');
-
-        const mainScreen = document.getElementById('main-screen');
-        const gameScreen = document.getElementById('game-screen');
-        const taskStatus = document.getElementById('task-status');
-        const winOverlay = document.getElementById('win-overlay');
-
-        let containerWidth = 0;
-        let containerHeight = 0;
-
-        // ============================================================
-        // 3. РИСОВАНИЕ ПЕРСОНАЖЕЙ
-        // ============================================================
-
-        // Отрисовка человека (лысый мужчина)
-        function drawMan(ctx, x, y, scale = 1, pose = 'stand') {
-            const s = scale * 80;
-            ctx.save();
-            ctx.translate(x, y);
-
-            // Тело
-            ctx.fillStyle = '#4a6fa5';
-            ctx.fillRect(-s * 0.2, -s * 0.1, s * 0.4, s * 0.4);
-
-            // Голова (лысая)
-            ctx.fillStyle = '#f5cba7';
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.3, s * 0.22, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#d4a574';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            // Глаза
-            ctx.fillStyle = '#333';
-            ctx.beginPath();
-            ctx.arc(-s * 0.08, -s * 0.32, s * 0.04, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.08, -s * 0.32, s * 0.04, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Нос
-            ctx.fillStyle = '#e8b88a';
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.26, s * 0.04, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Рот (улыбка)
-            ctx.strokeStyle = '#c0392b';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.2, s * 0.08, 0, Math.PI);
-            ctx.stroke();
-
-            // Ноги (джинсы)
-            ctx.fillStyle = '#2c3e50';
-            if (pose === 'walk') {
-                const step = Math.sin(state.frame / 10) * s * 0.15;
-                ctx.fillRect(-s * 0.15, s * 0.3, s * 0.12, s * 0.35);
-                ctx.fillRect(s * 0.03 + step, s * 0.3, s * 0.12, s * 0.35);
-            } else if (pose === 'pushup') {
-                // Отжимания - тело наклонено
-                ctx.fillStyle = '#4a6fa5';
-                ctx.fillRect(-s * 0.25, s * 0.1, s * 0.5, s * 0.15);
-                ctx.fillStyle = '#2c3e50';
-                ctx.fillRect(-s * 0.15, s * 0.25, s * 0.12, s * 0.15);
-                ctx.fillRect(s * 0.03, s * 0.25, s * 0.12, s * 0.15);
-                // Руки согнуты
-                ctx.fillStyle = '#f5cba7';
-                ctx.fillRect(-s * 0.3, s * 0.1, s * 0.08, s * 0.15);
-                ctx.fillRect(s * 0.22, s * 0.1, s * 0.08, s * 0.15);
-                ctx.restore();
-                return;
-            } else {
-                ctx.fillRect(-s * 0.15, s * 0.3, s * 0.12, s * 0.35);
-                ctx.fillRect(s * 0.03, s * 0.3, s * 0.12, s * 0.35);
-            }
-
-            // Руки
-            ctx.fillStyle = '#f5cba7';
-            if (pose === 'hug') {
-                // Руки раскинуты для объятий
-                ctx.save();
-                ctx.translate(-s * 0.3, -s * 0.05);
-                ctx.rotate(-0.5);
-                ctx.fillRect(0, 0, s * 0.08, s * 0.3);
-                ctx.restore();
-                ctx.save();
-                ctx.translate(s * 0.3, -s * 0.05);
-                ctx.rotate(0.5);
-                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.3);
-                ctx.restore();
-            } else if (pose === 'kiss') {
-                // Одна рука поднята
-                ctx.save();
-                ctx.translate(-s * 0.3, -s * 0.05);
-                ctx.rotate(-0.3);
-                ctx.fillRect(0, 0, s * 0.08, s * 0.25);
-                ctx.restore();
-                ctx.save();
-                ctx.translate(s * 0.3, -s * 0.15);
-                ctx.rotate(-1.2);
-                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.25);
-                ctx.restore();
-            } else if (pose === 'fix') {
-                // Руки с гаечным ключом
-                ctx.save();
-                ctx.translate(-s * 0.25, -s * 0.05);
-                ctx.rotate(-0.8);
-                ctx.fillRect(0, 0, s * 0.08, s * 0.3);
-                ctx.restore();
-                ctx.save();
-                ctx.translate(s * 0.25, -s * 0.05);
-                ctx.rotate(0.8);
-                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.3);
-                ctx.restore();
-                // Гаечный ключ
-                ctx.fillStyle = '#7f8c8d';
-                ctx.fillRect(s * 0.2, -s * 0.2, s * 0.25, s * 0.05);
-                ctx.fillRect(s * 0.35, -s * 0.25, s * 0.05, s * 0.15);
-            } else if (pose === 'feed') {
-                // Руки с миской
-                ctx.fillRect(-s * 0.3, -s * 0.05, s * 0.08, s * 0.2);
-                ctx.fillRect(s * 0.22, -s * 0.05, s * 0.08, s * 0.2);
-                // Миска
-                ctx.fillStyle = '#95a5a6';
+                ctx.fillStyle = '#FFD93D';
+                ctx.shadowColor = '#FFD93D';
+                ctx.shadowBlur = 40;
                 ctx.beginPath();
-                ctx.arc(0, s * 0.1, s * 0.12, 0, Math.PI * 2);
+                ctx.arc(740, 60, 40, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#e67e22';
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#8BC34A';
                 ctx.beginPath();
-                ctx.arc(0, s * 0.1, s * 0.06, 0, Math.PI * 2);
+                ctx.moveTo(0, 240);
+                for (let x = 0; x <= W; x += 40) {
+                    ctx.quadraticCurveTo(x + 20, 200 + Math.sin(x * 0.03 + 1) * 30, x + 40, 240);
+                }
+                ctx.lineTo(W, 0);
+                ctx.lineTo(0, 0);
                 ctx.fill();
-            } else if (pose === 'stand') {
-                ctx.fillRect(-s * 0.25, -s * 0.05, s * 0.08, s * 0.25);
-                ctx.fillRect(s * 0.17, -s * 0.05, s * 0.08, s * 0.25);
-            }
 
-            ctx.restore();
-        }
+                ctx.fillStyle = '#7CB342';
+                ctx.beginPath();
+                ctx.moveTo(0, 270);
+                for (let x = 0; x <= W; x += 50) {
+                    ctx.quadraticCurveTo(x + 25, 230 + Math.sin(x * 0.025 + 3) * 25, x + 50, 270);
+                }
+                ctx.lineTo(W, 0);
+                ctx.lineTo(0, 0);
+                ctx.fill();
 
-        // Отрисовка жены
-        function drawWife(ctx, x, y, scale = 1, pose = 'stand') {
-            const s = scale * 80;
-            ctx.save();
-            ctx.translate(x, y);
+                ctx.fillStyle = '#66BB6A';
+                ctx.fillRect(0, 270, W, H - 270);
 
-            // Платье
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.moveTo(-s * 0.3, -s * 0.1);
-            ctx.quadraticCurveTo(-s * 0.35, s * 0.2, -s * 0.2, s * 0.35);
-            ctx.lineTo(s * 0.2, s * 0.35);
-            ctx.quadraticCurveTo(s * 0.35, s * 0.2, s * 0.3, -s * 0.1);
-            ctx.fill();
-
-            // Тело (верх)
-            ctx.fillStyle = '#c0392b';
-            ctx.fillRect(-s * 0.2, -s * 0.15, s * 0.4, s * 0.15);
-
-            // Голова
-            ctx.fillStyle = '#f5cba7';
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.3, s * 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#d4a574';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            // Волосы (темные, до плеч)
-            ctx.fillStyle = '#2c2c2c';
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.3, s * 0.22, 0, Math.PI);
-            ctx.fill();
-            // Длинные волосы по бокам
-            ctx.fillRect(-s * 0.2, -s * 0.35, s * 0.05, s * 0.25);
-            ctx.fillRect(s * 0.15, -s * 0.35, s * 0.05, s * 0.25);
-            // Челка
-            ctx.fillRect(-s * 0.15, -s * 0.45, s * 0.3, s * 0.08);
-
-            // Глаза
-            ctx.fillStyle = '#333';
-            ctx.beginPath();
-            ctx.arc(-s * 0.08, -s * 0.32, s * 0.035, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.08, -s * 0.32, s * 0.035, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Ресницы
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1.5;
-            for (let side = -1; side <= 1; side += 2) {
-                for (let i = 0; i < 3; i++) {
+                for (let i = 0; i < 80; i++) {
+                    const x = (i * 47 + 13) % W;
+                    const y = 280 + (i * 31 + 7) % (H - 300);
+                    ctx.strokeStyle = i % 3 ? 'rgba(60,140,50,0.2)' : 'rgba(200,255,180,0.15)';
+                    ctx.lineWidth = 1.5;
                     ctx.beginPath();
-                    ctx.moveTo(side * 0.08 + i * 0.02, -s * 0.34);
-                    ctx.lineTo(side * 0.08 + i * 0.02 + side * 0.03, -s * 0.37 + i * 0.015);
+                    ctx.moveTo(x, y + 6);
+                    ctx.lineTo(x + 2 + Math.sin(i) * 2, y);
                     ctx.stroke();
                 }
+
+                drawHouse(60, 220);
+                drawTree(720, 220);
+                drawFence(200, 275);
+
+                if (car.visible) drawCar(car.x, car.y);
+                if (dog.visible) drawDog(dog.x, dog.y);
+                if (wife.visible) drawWife(wife.x, wife.y);
+                drawMan(man.x, man.y);
+                if (lawnmower.visible) drawLawnmower(man.x + 40, man.y + 20);
+                if (foodBowl.visible) drawFoodBowl(man.x + 30, man.y + 25);
+
+                drawParticles();
             }
 
-            // Губы (красные)
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(0, -s * 0.24, s * 0.05, 0, Math.PI);
-            ctx.fill();
+            function drawCloud(x, y, size) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.shadowColor = 'rgba(255,255,255,0.2)';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.3, y - size * 0.2, size * 0.5, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.6, y, size * 0.35, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.3, y + size * 0.1, size * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
 
-            // Ноги (туфли)
-            ctx.fillStyle = '#2c2c2c';
-            ctx.fillRect(-s * 0.15, s * 0.35, s * 0.1, s * 0.12);
-            ctx.fillRect(s * 0.05, s * 0.35, s * 0.1, s * 0.12);
+            function drawHouse(x, y) {
+                ctx.fillStyle = '#D4A574';
+                ctx.fillRect(x, y + 30, 80, 60);
+                ctx.fillStyle = '#B8956A';
+                ctx.fillRect(x + 30, y + 60, 20, 30);
 
-            // Руки
-            ctx.fillStyle = '#f5cba7';
-            if (pose === 'hug' || pose === 'kiss') {
-                ctx.save();
-                ctx.translate(-s * 0.3, -s * 0.05);
-                ctx.rotate(-0.4);
-                ctx.fillRect(0, 0, s * 0.07, s * 0.25);
-                ctx.restore();
-                ctx.save();
-                ctx.translate(s * 0.3, -s * 0.05);
-                ctx.rotate(0.4);
-                ctx.fillRect(-s * 0.07, 0, s * 0.07, s * 0.25);
-                ctx.restore();
-            } else if (pose === 'hit') {
-                // Дубинка в руке
-                ctx.save();
-                ctx.translate(-s * 0.3, -s * 0.1);
-                ctx.rotate(-1.2);
-                ctx.fillRect(0, 0, s * 0.07, s * 0.3);
-                ctx.restore();
-                ctx.fillRect(s * 0.23, -s * 0.05, s * 0.07, s * 0.2);
-                // Дубинка
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(s * 0.15, -s * 0.35, s * 0.04, s * 0.4);
                 ctx.fillStyle = '#A0522D';
-                ctx.fillRect(s * 0.1, -s * 0.38, s * 0.14, s * 0.06);
-            } else {
-                ctx.fillRect(-s * 0.25, -s * 0.05, s * 0.07, s * 0.2);
-                ctx.fillRect(s * 0.18, -s * 0.05, s * 0.07, s * 0.2);
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y + 30);
+                ctx.lineTo(x + 40, y - 10);
+                ctx.lineTo(x + 90, y + 30);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#5DADE2';
+                ctx.fillRect(x + 10, y + 40, 18, 18);
+                ctx.fillRect(x + 52, y + 40, 18, 18);
+
+                ctx.fillStyle = '#8D6E63';
+                ctx.fillRect(x + 60, y - 5, 12, 20);
+                ctx.fillStyle = 'rgba(200,200,200,0.3)';
+                ctx.beginPath();
+                ctx.arc(x + 66, y - 12, 6, 0, Math.PI * 2);
+                ctx.arc(x + 70, y - 22, 8, 0, Math.PI * 2);
+                ctx.arc(x + 62, y - 30, 6, 0, Math.PI * 2);
+                ctx.fill();
             }
 
-            // Если поза "kiss" - сердечки
-            if (pose === 'kiss') {
+            function drawTree(x, y) {
+                ctx.fillStyle = '#8D6E63';
+                ctx.fillRect(x + 8, y + 20, 14, 40);
+                ctx.fillStyle = '#4CAF50';
+                ctx.beginPath();
+                ctx.arc(x + 15, y + 10, 35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#66BB6A';
+                ctx.beginPath();
+                ctx.arc(x - 5, y + 15, 28, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x + 35, y + 15, 28, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            function drawFence(x, y) {
+                ctx.strokeStyle = '#B8956A';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 14; i++) {
+                    const fx = x + i * 18;
+                    ctx.beginPath();
+                    ctx.moveTo(fx, y);
+                    ctx.lineTo(fx, y - 20);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(fx - 2, y - 12);
+                    ctx.lineTo(fx + 2, y - 12);
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.moveTo(x, y - 6);
+                ctx.lineTo(x + 14 * 18, y - 6);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y - 14);
+                ctx.lineTo(x + 14 * 18, y - 14);
+                ctx.stroke();
+            }
+
+            // ===== Мужчина с ходьбой =====
+            function drawMan(x, y) {
+                const jump = man.action === 'pushup' ? Math.abs(Math.sin(frame * 0.1)) * 16 : 0;
+                const actualY = y - jump;
+
+                ctx.save();
+                ctx.translate(x, actualY);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                ctx.beginPath();
+                ctx.ellipse(0, 44 + jump, 25, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#2C3E50';
+                ctx.lineWidth = 10;
+                ctx.lineCap = 'round';
+                const walk = man.action === 'mowing' ? Math.sin(frame * 0.15) * 8 : 0;
+                const jumpLeg = man.action === 'pushup' ? Math.sin(frame * 0.15) * 8 : 0;
+                ctx.beginPath();
+                ctx.moveTo(-6, 26);
+                ctx.lineTo(-8 + walk + jumpLeg, 44);
+                ctx.moveTo(6, 26);
+                ctx.lineTo(8 - walk - jumpLeg, 44);
+                ctx.stroke();
+
+                ctx.fillStyle = '#1A252F';
+                ctx.fillRect(-14 + walk + jumpLeg, 44, 12, 5);
+                ctx.fillRect(2 - walk - jumpLeg, 44, 12, 5);
+
+                ctx.fillStyle = '#3498DB';
+                ctx.beginPath();
+                ctx.roundRect(-16, -4, 32, 32, 6);
+                ctx.fill();
+                ctx.fillStyle = '#2980B9';
+                ctx.fillRect(-10, -2, 20, 8);
+
+                ctx.strokeStyle = '#F5D0B8';
+                ctx.lineWidth = 8;
+                const armSwing = man.action === 'mowing' ? Math.sin(frame * 0.15) * 20 : 0;
+                const armSwing2 = man.action === 'mowing' ? Math.cos(frame * 0.15) * 10 : 0;
+                const jumpArm = man.action === 'pushup' ? Math.sin(frame * 0.12) * 20 : 0;
+                ctx.beginPath();
+                ctx.moveTo(-16, 4);
+                ctx.lineTo(-28 + armSwing + jumpArm, 20 + armSwing2 + jumpArm * 0.3);
+                ctx.moveTo(16, 4);
+                ctx.lineTo(28 - armSwing - jumpArm, 20 - armSwing2 - jumpArm * 0.3);
+                ctx.stroke();
+
+                ctx.fillStyle = '#F5D0B8';
+                ctx.beginPath();
+                ctx.arc(0, -20, 20, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.beginPath();
+                ctx.ellipse(5, -26, 10, 6, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#2C3E50';
+                ctx.beginPath();
+                ctx.arc(-6, -22, 3, 0, Math.PI * 2);
+                ctx.arc(6, -22, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#C0392B';
+                ctx.lineWidth = 2;
+                if (man.action === 'pushup') {
+                    ctx.beginPath();
+                    ctx.arc(0, -12, 5, 0.15, Math.PI - 0.15);
+                    ctx.stroke();
+                } else if (man.action === 'mowing') {
+                    ctx.beginPath();
+                    ctx.arc(0, -14, 6, 0.1, Math.PI - 0.1);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(0, -14, 5, 0.15, Math.PI - 0.15);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // Газонокосилка следует за человеком
+                if (man.action === 'mowing') {
+                    lawnmower.x = man.x + 40;
+                    lawnmower.y = man.y + 20;
+                }
+            }
+
+            // ===== Обновление позиции при ходьбе =====
+            function updateManPosition() {
+                if (man.action === 'mowing') {
+                    man.x += man.speed * man.walkDir;
+                    if (man.x > 480 || man.x < 320) {
+                        man.walkDir *= -1;
+                    }
+                }
+            }
+
+            // ===== Жена =====
+            function drawWife(x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                ctx.beginPath();
+                ctx.ellipse(0, 42, 22, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#F5D0B8';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-6, 24);
+                ctx.lineTo(-8, 40);
+                ctx.moveTo(6, 24);
+                ctx.lineTo(8, 40);
+                ctx.stroke();
+
+                ctx.fillStyle = '#E8BFA0';
+                ctx.fillRect(-14, 40, 12, 4);
+                ctx.fillRect(2, 40, 12, 4);
+
+                ctx.fillStyle = '#E74C3C';
+                ctx.beginPath();
+                ctx.moveTo(-16, 0);
+                ctx.quadraticCurveTo(0, -6, 16, 0);
+                ctx.lineTo(24, 28);
+                ctx.lineTo(-24, 28);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#C0392B';
+                ctx.fillRect(-14, 12, 28, 3);
+
+                ctx.strokeStyle = '#F5D0B8';
+                ctx.lineWidth = 7;
+                ctx.lineCap = 'round';
+                const hugArm = man.action === 'hug' ? 10 : 0;
+                ctx.beginPath();
+                ctx.moveTo(-16, 4);
+                ctx.lineTo(-26 + hugArm, 16 + hugArm * 0.3);
+                ctx.moveTo(16, 4);
+                ctx.lineTo(26 - hugArm, 16 - hugArm * 0.3);
+                ctx.stroke();
+
+                ctx.fillStyle = '#F5D0B8';
+                ctx.fillRect(-4, -4, 8, 6);
+
+                ctx.fillStyle = '#F5D0B8';
+                ctx.beginPath();
+                ctx.arc(0, -18, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#5D4037';
+                ctx.beginPath();
+                ctx.arc(0, -24, 20, Math.PI, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(-20, -22, 6, 18);
+                ctx.fillRect(14, -22, 6, 18);
+                ctx.fillRect(-16, -32, 32, 8);
+
+                ctx.fillStyle = '#2C3E50';
+                ctx.beginPath();
+                ctx.arc(-5, -20, 2.5, 0, Math.PI * 2);
+                ctx.arc(5, -20, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-4, -21, 1, 0, Math.PI * 2);
+                ctx.arc(6, -21, 1, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(226,120,125,0.25)';
+                ctx.beginPath();
+                ctx.ellipse(-12, -16, 5, 3, 0, 0, Math.PI * 2);
+                ctx.ellipse(12, -16, 5, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#C0392B';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -13, 4.5, 0.15, Math.PI - 0.15);
+                ctx.stroke();
+
+                ctx.fillStyle = '#F8BBD0';
+                ctx.beginPath();
+                ctx.ellipse(-16, -32, 7, 4, -0.3, 0, Math.PI * 2);
+                ctx.ellipse(-6, -32, 7, 4, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#E91E63';
+                ctx.beginPath();
+                ctx.arc(-11, -32, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            // ===== Собака =====
+            function drawDog(x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                ctx.fillStyle = 'rgba(0,0,0,0.08)';
+                ctx.beginPath();
+                ctx.ellipse(2, 34, 28, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#A67B5B';
+                ctx.beginPath();
+                ctx.ellipse(0, 14, 30, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#D4B896';
+                ctx.beginPath();
+                ctx.ellipse(6, 18, 16, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#A67B5B';
+                ctx.lineWidth = 7;
+                ctx.lineCap = 'round';
+                const wag = Math.sin(frame * 0.1) * 15;
+                ctx.beginPath();
+                ctx.moveTo(-28, 10);
+                ctx.quadraticCurveTo(-40, -6 + wag, -34, 2 + wag);
+                ctx.stroke();
+
+                ctx.fillStyle = '#A67B5B';
+                ctx.fillRect(-22, 28, 8, 10);
+                ctx.fillRect(-8, 28, 8, 10);
+
+                ctx.fillStyle = '#A67B5B';
+                ctx.beginPath();
+                ctx.arc(26, 4, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#D4B896';
+                ctx.beginPath();
+                ctx.ellipse(38, 6, 12, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#8D6E63';
+                ctx.beginPath();
+                ctx.ellipse(14, -2, 7, 14, -0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(34, -2, 7, 14, 0.4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1A252F';
+                ctx.beginPath();
+                ctx.arc(28, 0, 3.5, 0, Math.PI * 2);
+                ctx.arc(36, 0, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(29, -1, 1.5, 0, Math.PI * 2);
+                ctx.arc(37, -1, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#6D4C41';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(28, -4, 4, Math.PI * 1.2, Math.PI * 1.8);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(36, -4, 4, Math.PI * 1.2, Math.PI * 1.8);
+                ctx.stroke();
+
+                ctx.fillStyle = '#3E2723';
+                ctx.beginPath();
+                ctx.arc(46, 5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(44, 3, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#F06292';
+                ctx.beginPath();
+                ctx.ellipse(44, 12, 4, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#E91E63';
+                ctx.beginPath();
+                ctx.arc(44, 15, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#A67B5B';
+                ctx.fillRect(10, 28, 8, 10);
+                ctx.fillRect(24, 28, 8, 10);
+
+                ctx.fillStyle = '#D4B896';
+                ctx.fillRect(-20, 34, 4, 4);
+                ctx.fillRect(-6, 34, 4, 4);
+                ctx.fillRect(12, 34, 4, 4);
+                ctx.fillRect(26, 34, 4, 4);
+
+                ctx.restore();
+            }
+
+            // ===== Машина =====
+            function drawCar(x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                ctx.fillStyle = '#1A5276';
+                ctx.beginPath();
+                ctx.roundRect(-40, 8, 80, 26, 4);
+                ctx.fill();
+                ctx.fillStyle = '#154360';
+                ctx.fillRect(-20, -8, 40, 18);
+
+                ctx.fillStyle = '#85C1E9';
+                ctx.fillRect(-16, -6, 14, 10);
+                ctx.fillRect(2, -6, 14, 10);
+
+                ctx.fillStyle = '#1A252F';
+                ctx.beginPath();
+                ctx.arc(-24, 34, 10, 0, Math.PI * 2);
+                ctx.arc(24, 34, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#7F8C8D';
+                ctx.beginPath();
+                ctx.arc(-24, 34, 4, 0, Math.PI * 2);
+                ctx.arc(24, 34, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#F9E79F';
+                ctx.beginPath();
+                ctx.arc(-40, 16, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#E74C3C';
+                ctx.beginPath();
+                ctx.arc(40, 16, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            function drawLawnmower(x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.fillStyle = '#E67E22';
+                ctx.beginPath();
+                ctx.roundRect(0, 0, 40, 18, 4);
+                ctx.fill();
+                ctx.fillStyle = '#F39C12';
+                ctx.fillRect(6, -6, 28, 8);
+                ctx.strokeStyle = '#7F8C8D';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(32, 8);
+                ctx.lineTo(44, -4);
+                ctx.stroke();
+                ctx.fillStyle = '#2C3E50';
+                ctx.beginPath();
+                ctx.arc(8, 18, 6, 0, Math.PI * 2);
+                ctx.arc(32, 18, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Вращающиеся лезвия
+                ctx.fillStyle = 'rgba(200,200,200,0.3)';
+                for (let i = 0; i < 4; i++) {
+                    const angle = frame * 0.2 + i * Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.arc(20 + Math.cos(angle) * 12, 9 + Math.sin(angle) * 8, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            function drawFoodBowl(x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.fillStyle = '#8D6E63';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 24, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#6D4C41';
+                ctx.beginPath();
+                ctx.ellipse(0, 2, 20, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#F5B041';
                 for (let i = 0; i < 5; i++) {
-                    const angle = state.frame / 20 + i * 1.2;
-                    const r = s * 0.3 + Math.sin(state.frame / 10 + i) * s * 0.1;
-                    const hx = Math.cos(angle) * r;
-                    const hy = Math.sin(angle) * r * 0.6 - s * 0.3;
-                    ctx.fillStyle = `rgba(255, 0, 0, ${0.3 + Math.sin(state.frame / 5 + i) * 0.2})`;
-                    drawHeart(ctx, hx, hy, s * 0.06);
+                    const a = i * 1.2 + 0.3;
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(a) * 10, Math.sin(a) * 4 + 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
                 }
+                ctx.restore();
             }
 
-            ctx.restore();
-        }
+            // ===== Анимация задач =====
+            function animateTask(taskId) {
+                if (animating || tasks[taskId]) return;
 
-        function drawHeart(ctx, x, y, size) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.beginPath();
-            ctx.moveTo(0, -size * 0.3);
-            ctx.bezierCurveTo(-size * 0.5, -size * 0.5, -size * 0.5, size * 0.2, 0, size * 0.4);
-            ctx.bezierCurveTo(size * 0.5, size * 0.2, size * 0.5, -size * 0.5, 0, -size * 0.3);
-            ctx.fill();
-            ctx.restore();
-        }
+                animating = true;
+                updateUI();
 
-        // Отрисовка собаки Лео (рыжий хаски)
-        function drawLeo(ctx, x, y, scale = 1, pose = 'stand') {
-            const s = scale * 70;
-            ctx.save();
-            ctx.translate(x, y);
+                wife.visible = false;
+                dog.visible = false;
+                car.visible = false;
+                lawnmower.visible = false;
+                foodBowl.visible = false;
+                man.action = 'idle';
+                man.x = 400;
+                particles = [];
 
-            // Тело
-            ctx.fillStyle = '#D4A574';
-            ctx.beginPath();
-            ctx.ellipse(0, s * 0.05, s * 0.3, s * 0.2, 0, 0, Math.PI * 2);
-            ctx.fill();
+                const duration = 3500 + Math.random() * 1000;
+                let interval = null;
 
-            // Голова
-            ctx.fillStyle = '#D4A574';
-            ctx.beginPath();
-            ctx.arc(s * 0.3, -s * 0.1, s * 0.18, 0, Math.PI * 2);
-            ctx.fill();
+                switch (taskId) {
+                    case 0:
+                        man.action = 'mowing';
+                        man.x = 400;
+                        man.walkDir = 1;
+                        lawnmower.visible = true;
+                        interval = setInterval(() => {
+                            addParticles('grass', man.x + 20 + Math.random() * 40, man.y + 20, 3, {
+                                spread: 1.0,
+                                speed: 80,
+                                size: 6,
+                                color: ['#4CAF50', '#66BB6A', '#43A047'][Math.floor(Math.random() * 3)]
+                            });
+                        }, 80);
+                        break;
+                    case 1:
+                        dog.visible = true;
+                        foodBowl.visible = true;
+                        interval = setInterval(() => {
+                            addParticles('star', man.x + 20 + Math.random() * 30, man.y + 10, 2, {
+                                spread: 0.5,
+                                speed: 50,
+                                size: 8,
+                                color: '#F5B041'
+                            });
+                        }, 150);
+                        break;
+                    case 2:
+                        car.visible = true;
+                        interval = setInterval(() => {
+                            addParticles('spark', man.x - 20 + Math.random() * 60, man.y + 10, 4, {
+                                spread: 2.0,
+                                speed: 100,
+                                size: 5,
+                                color: '#F9E79F'
+                            });
+                            addParticles('spark', man.x - 10 + Math.random() * 40, man.y, 3, {
+                                spread: 1.5,
+                                speed: 80,
+                                size: 4,
+                                color: '#F39C12'
+                            });
+                        }, 120);
+                        break;
+                    case 3:
+                        man.action = 'pushup';
+                        interval = setInterval(() => {
+                            addParticles('sweat', man.x - 10 + Math.random() * 20, man.y - 10, 2, {
+                                spread: 0.3,
+                                speed: 30,
+                                size: 5
+                            });
+                        }, 180);
+                        break;
+                    case 4:
+                        wife.visible = true;
+                        man.action = 'hug';
+                        interval = setInterval(() => {
+                            addParticles('heart', man.x - 20 + Math.random() * 40, man.y - 30 + Math.random() *
+                                20, 2, {
+                                    spread: 0.6,
+                                    speed: 80,
+                                    size: 12,
+                                    color: ['#E74C3C', '#F1948A', '#F5B7B1'][Math.floor(Math.random() *
+                                    3)]
+                                });
+                        }, 150);
+                        break;
+                }
 
-            // Морда (светлая)
-            ctx.fillStyle = '#E8C9A0';
-            ctx.beginPath();
-            ctx.ellipse(s * 0.38, -s * 0.05, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Нос
-            ctx.fillStyle = '#2c2c2c';
-            ctx.beginPath();
-            ctx.arc(s * 0.44, -s * 0.06, s * 0.035, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Уши (стоячие)
-            ctx.fillStyle = '#D4A574';
-            ctx.beginPath();
-            ctx.moveTo(s * 0.22, -s * 0.22);
-            ctx.lineTo(s * 0.18, -s * 0.38);
-            ctx.lineTo(s * 0.3, -s * 0.28);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(s * 0.38, -s * 0.22);
-            ctx.lineTo(s * 0.42, -s * 0.38);
-            ctx.lineTo(s * 0.3, -s * 0.28);
-            ctx.fill();
-
-            // Глаза
-            ctx.fillStyle = '#4a90d9';
-            ctx.beginPath();
-            ctx.arc(s * 0.28, -s * 0.12, s * 0.04, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.38, -s * 0.12, s * 0.04, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#1a1a1a';
-            ctx.beginPath();
-            ctx.arc(s * 0.29, -s * 0.11, s * 0.02, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.39, -s * 0.11, s * 0.02, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Хвост
-            ctx.fillStyle = '#D4A574';
-            ctx.beginPath();
-            ctx.moveTo(-s * 0.3, s * 0.05);
-            ctx.quadraticCurveTo(-s * 0.4, -s * 0.1, -s * 0.3, -s * 0.2);
-            ctx.lineTo(-s * 0.25, -s * 0.15);
-            ctx.quadraticCurveTo(-s * 0.32, -s * 0.05, -s * 0.25, s * 0.05);
-            ctx.fill();
-
-            // Лапы
-            ctx.fillStyle = '#D4A574';
-            if (pose === 'eat') {
-                // Сидит, ест
-                ctx.fillRect(-s * 0.2, s * 0.2, s * 0.1, s * 0.1);
-                ctx.fillRect(s * 0.05, s * 0.2, s * 0.1, s * 0.1);
-                // Голова наклонена вниз
-                ctx.fillRect(s * 0.15, s * 0.0, s * 0.08, s * 0.15);
-            } else {
-                ctx.fillRect(-s * 0.2, s * 0.2, s * 0.08, s * 0.12);
-                ctx.fillRect(-s * 0.05, s * 0.2, s * 0.08, s * 0.12);
-                ctx.fillRect(s * 0.1, s * 0.2, s * 0.08, s * 0.12);
-                ctx.fillRect(s * 0.2, s * 0.2, s * 0.08, s * 0.12);
+                animTimer = setTimeout(() => {
+                    tasks[taskId] = true;
+                    animating = false;
+                    if (interval) clearInterval(interval);
+                    man.action = 'idle';
+                    man.x = 400;
+                    wife.visible = false;
+                    dog.visible = false;
+                    car.visible = false;
+                    lawnmower.visible = false;
+                    foodBowl.visible = false;
+                    particles = [];
+                    updateUI();
+                    animTimer = null;
+                }, duration + 300);
             }
 
-            ctx.restore();
-        }
+            // ===== Победа =====
+            function showVictory() {
+                if (victoryShown) return;
+                victoryShown = true;
+                victory.classList.add('show');
 
-        // Отрисовка машины BMW X5
-        function drawCar(ctx, x, y, scale = 1) {
-            const s = scale * 70;
-            ctx.save();
-            ctx.translate(x, y);
+                let count = 0;
+                const fwInterval = setInterval(() => {
+                    if (count > 30) { clearInterval(fwInterval); return; }
+                    addParticles('star', 100 + Math.random() * 600, 100 + Math.random() * 200, 5, {
+                        spread: 2.0,
+                        speed: 100 + Math.random() * 80,
+                        size: 10,
+                        color: ['#F1C40F', '#E74C3C', '#2ECC71', '#3498DB'][Math.floor(Math.random() * 4)]
+                    });
+                    addParticles('heart', 100 + Math.random() * 600, 100 + Math.random() * 200, 3, {
+                        spread: 1.5,
+                        speed: 80 + Math.random() * 60,
+                        size: 10,
+                        color: ['#E74C3C', '#F1948A', '#F5B7B1'][Math.floor(Math.random() * 3)]
+                    });
+                    count++;
+                }, 400);
 
-            // Кузов (серебристый)
-            ctx.fillStyle = '#bdc3c7';
-            ctx.beginPath();
-            ctx.moveTo(-s * 0.5, s * 0.1);
-            ctx.quadraticCurveTo(-s * 0.55, -s * 0.1, -s * 0.4, -s * 0.2);
-            ctx.lineTo(-s * 0.05, -s * 0.2);
-            ctx.quadraticCurveTo(0, -s * 0.3, s * 0.1, -s * 0.25);
-            ctx.lineTo(s * 0.3, -s * 0.25);
-            ctx.quadraticCurveTo(s * 0.4, -s * 0.2, s * 0.45, -s * 0.1);
-            ctx.lineTo(s * 0.5, s * 0.1);
-            ctx.fill();
-
-            // Крыша (стекло)
-            ctx.fillStyle = '#7f8c8d';
-            ctx.fillRect(-s * 0.35, -s * 0.22, s * 0.3, s * 0.1);
-
-            // Окна
-            ctx.fillStyle = '#2c3e50';
-            ctx.fillRect(-s * 0.3, -s * 0.2, s * 0.1, s * 0.07);
-            ctx.fillRect(-s * 0.15, -s * 0.2, s * 0.1, s * 0.07);
-            ctx.fillRect(0, -s * 0.2, s * 0.1, s * 0.07);
-            ctx.fillRect(s * 0.15, -s * 0.2, s * 0.1, s * 0.07);
-
-            // Фары
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(-s * 0.48, s * 0.0, s * 0.06, s * 0.06);
-            ctx.fillRect(s * 0.42, s * 0.0, s * 0.06, s * 0.06);
-
-            // Колеса
-            ctx.fillStyle = '#2c2c2c';
-            ctx.beginPath();
-            ctx.arc(-s * 0.3, s * 0.15, s * 0.1, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.3, s * 0.15, s * 0.1, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#7f8c8d';
-            ctx.beginPath();
-            ctx.arc(-s * 0.3, s * 0.15, s * 0.05, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(s * 0.3, s * 0.15, s * 0.05, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Бампер
-            ctx.fillStyle = '#95a5a6';
-            ctx.fillRect(-s * 0.5, s * 0.08, s * 0.08, s * 0.04);
-            ctx.fillRect(s * 0.42, s * 0.08, s * 0.08, s * 0.04);
-
-            ctx.restore();
-        }
-
-        // ============================================================
-        // 4. ОСНОВНЫЕ СЦЕНЫ
-        // ============================================================
-
-        // Главный экран
-        function drawMainScreen() {
-            const w = mainCanvas.width;
-            const h = mainCanvas.height;
-            mainCtx.clearRect(0, 0, w, h);
-
-            // Небо и трава
-            const grad = mainCtx.createLinearGradient(0, 0, 0, h);
-            grad.addColorStop(0, '#87CEEB');
-            grad.addColorStop(0.7, '#87CEEB');
-            grad.addColorStop(0.85, '#2ecc71');
-            grad.addColorStop(1, '#27ae60');
-            mainCtx.fillStyle = grad;
-            mainCtx.fillRect(0, 0, w, h);
-
-            // Домик на заднем плане
-            mainCtx.fillStyle = '#e67e22';
-            mainCtx.fillRect(w * 0.05, h * 0.3, w * 0.15, h * 0.3);
-            mainCtx.fillStyle = '#c0392b';
-            mainCtx.beginPath();
-            mainCtx.moveTo(w * 0.02, h * 0.3);
-            mainCtx.lineTo(w * 0.23, h * 0.3);
-            mainCtx.lineTo(w * 0.125, h * 0.15);
-            mainCtx.fill();
-
-            // Человек в центре
-            const manX = w * 0.5;
-            const manY = h * 0.6;
-            drawMan(mainCtx, manX, manY, Math.min(w, h) / 600);
-
-            // Подпись
-            mainCtx.fillStyle = '#2c3e50';
-            mainCtx.font = `${Math.min(w, h) * 0.035}px Arial`;
-            mainCtx.textAlign = 'center';
-            mainCtx.fillText('Что сделаем?', w * 0.5, h * 0.15);
-        }
-
-        // Мини-игры
-        function drawGameScene(task) {
-            const w = gameCanvas.width;
-            const h = gameCanvas.height;
-            gameCtx.clearRect(0, 0, w, h);
-
-            const sc = Math.min(w, h) / 600;
-
-            // Фон
-            const grad = gameCtx.createLinearGradient(0, 0, 0, h);
-            grad.addColorStop(0, '#87CEEB');
-            grad.addColorStop(0.7, '#87CEEB');
-            grad.addColorStop(0.85, '#2ecc71');
-            grad.addColorStop(1, '#27ae60');
-            gameCtx.fillStyle = grad;
-            gameCtx.fillRect(0, 0, w, h);
-
-            const cx = w / 2;
-            const cy = h / 2;
-
-            state.animProgress += 0.02;
-
-            switch (task) {
-                case 'mow': {
-                    // Газон
-                    for (let i = 0; i < 30; i++) {
-                        const gx = (i / 30) * w;
-                        const gy = h * 0.6 + Math.sin(i * 1.5 + state.frame / 20) * h * 0.1;
-                        gameCtx.fillStyle = '#27ae60';
-                        gameCtx.fillRect(gx, gy, 5, h * 0.15);
-                        gameCtx.fillStyle = '#2ecc71';
-                        gameCtx.fillRect(gx + 2, gy + 5, 5, h * 0.1);
-                    }
-                    // Человек с газонокосилкой бегает
-                    const walkX = cx + Math.sin(state.frame / 15) * w * 0.25;
-                    drawMan(gameCtx, walkX, h * 0.65, sc, 'walk');
-                    // Газонокосилка
-                    gameCtx.fillStyle = '#e74c3c';
-                    gameCtx.fillRect(walkX + sc * 30, h * 0.65 + sc * 10, sc * 40, sc * 20);
-                    gameCtx.fillStyle = '#2c3e50';
-                    gameCtx.fillRect(walkX + sc * 35, h * 0.65 + sc * 25, sc * 5, sc * 10);
-                    gameCtx.fillRect(walkX + sc * 45, h * 0.65 + sc * 25, sc * 5, sc * 10);
-                    taskStatus.textContent = '🌿 Косим газон...';
-                    break;
-                }
-                case 'feed': {
-                    // Человек с миской
-                    drawMan(gameCtx, cx - sc * 80, h * 0.6, sc, 'feed');
-                    // Лео
-                    const leoX = cx + sc * 50 + Math.sin(state.frame / 20) * sc * 5;
-                    drawLeo(gameCtx, leoX, h * 0.7, sc, 'eat');
-                    // Миска на земле
-                    gameCtx.fillStyle = '#95a5a6';
-                    gameCtx.beginPath();
-                    gameCtx.arc(cx + sc * 30, h * 0.7 + sc * 10, sc * 15, 0, Math.PI * 2);
-                    gameCtx.fill();
-                    gameCtx.fillStyle = '#e67e22';
-                    gameCtx.beginPath();
-                    gameCtx.arc(cx + sc * 30, h * 0.7 + sc * 10, sc * 8, 0, Math.PI * 2);
-                    gameCtx.fill();
-                    taskStatus.textContent = '🐕 Кормим Лео...';
-                    break;
-                }
-                case 'fix': {
-                    // Машина
-                    drawCar(gameCtx, cx, h * 0.6, sc);
-                    // Человек с ключом
-                    drawMan(gameCtx, cx + sc * 60, h * 0.65, sc, 'fix');
-                    taskStatus.textContent = '🔧 Чиним машину...';
-                    break;
-                }
-                case 'train': {
-                    // Человек отжимается
-                    drawMan(gameCtx, cx, h * 0.7, sc, 'pushup');
-                    // Пот капает
-                    for (let i = 0; i < 3; i++) {
-                        const dropY = h * 0.5 + i * h * 0.08 + Math.sin(state.frame / 10 + i * 2) * h * 0.02;
-                        gameCtx.fillStyle = 'rgba(100, 200, 255, 0.5)';
-                        gameCtx.beginPath();
-                        gameCtx.arc(cx + (i - 1) * sc * 20, dropY, 3, 0, Math.PI * 2);
-                        gameCtx.fill();
-                    }
-                    taskStatus.textContent = '💪 Тренируемся...';
-                    break;
-                }
-                case 'kiss': {
-                    // Мужчина и жена
-                    drawMan(gameCtx, cx - sc * 50, h * 0.6, sc, 'kiss');
-                    drawWife(gameCtx, cx + sc * 50, h * 0.6, sc, 'kiss');
-                    taskStatus.textContent = '❤️ Поцелуй!';
-                    break;
-                }
-                case 'punish': {
-                    // Жена с дубинкой бьет мужа
-                    drawMan(gameCtx, cx - sc * 40, h * 0.6, sc, 'stand');
-                    // Эффект удара
-                    if (state.frame % 10 < 5) {
-                        drawWife(gameCtx, cx + sc * 30, h * 0.6, sc, 'hit');
-                    } else {
-                        drawWife(gameCtx, cx + sc * 30, h * 0.6, sc, 'stand');
-                    }
-                    // Звездочки удара
-                    for (let i = 0; i < 5; i++) {
-                        const angle = state.frame / 10 + i * 1.5;
-                        const dist = sc * 40 + Math.sin(state.frame / 5 + i) * sc * 15;
-                        gameCtx.fillStyle = '#f1c40f';
-                        gameCtx.font = `${sc * 25}px Arial`;
-                        gameCtx.fillText('💥', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist * 0.5);
-                    }
-                    taskStatus.textContent = '⚠️ Ой-ой! Жена разозлилась!';
-                    break;
-                }
-                case 'win': {
-                    // Победная сцена
-                    drawMan(gameCtx, cx - sc * 60, h * 0.6, sc, 'hug');
-                    drawWife(gameCtx, cx + sc * 50, h * 0.6, sc, 'hug');
-                    // Кубок
-                    gameCtx.fillStyle = '#f1c40f';
-                    gameCtx.beginPath();
-                    gameCtx.arc(cx, h * 0.35, sc * 20, 0, Math.PI * 2);
-                    gameCtx.fill();
-                    gameCtx.fillStyle = '#d4ac0d';
-                    gameCtx.fillRect(cx - sc * 5, h * 0.35 + sc * 20, sc * 10, sc * 25);
-                    gameCtx.fillStyle = '#f1c40f';
-                    gameCtx.font = `${sc * 40}px Arial`;
-                    gameCtx.textAlign = 'center';
-                    gameCtx.fillText('🏆', cx, h * 0.35 + sc * 15);
-
-                    // Салюты
-                    for (let i = 0; i < 15; i++) {
-                        const angle = state.frame / 30 + i * 0.8;
-                        const dist = sc * 80 + Math.sin(state.frame / 20 + i) * sc * 30;
-                        const colors = ['#ff0000', '#ffd700', '#00ff00', '#00bfff', '#ff69b4', '#ff4500'];
-                        gameCtx.fillStyle = colors[i % colors.length];
-                        const size = 3 + Math.sin(state.frame / 10 + i * 1.3) * 2;
-                        gameCtx.beginPath();
-                        gameCtx.arc(
-                            cx + Math.cos(angle) * dist,
-                            h * 0.15 + Math.sin(angle * 0.7) * dist * 0.3,
-                            size, 0, Math.PI * 2
-                        );
-                        gameCtx.fill();
-                    }
-                    taskStatus.textContent = '🎉 ПОБЕДА! Все дела сделаны!';
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-
-        // ============================================================
-        // 5. УПРАВЛЕНИЕ ИГРОЙ
-        // ============================================================
-
-        function switchScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
-
-        function startTask(task) {
-            if (state.isPlaying) return;
-
-            // Если задача уже выполнена
-            if (state.tasks[task]) {
-                return;
+                setTimeout(() => {
+                    const extra = setInterval(() => {
+                        if (!victoryShown) { clearInterval(extra); return; }
+                        addParticles('star', 100 + Math.random() * 600, 100 + Math.random() * 200, 4, {
+                            spread: 2.0,
+                            speed: 100 + Math.random() * 60,
+                            size: 8,
+                            color: ['#F1C40F', '#E74C3C', '#2ECC71', '#3498DB'][Math.floor(Math.random() *
+                                4)]
+                        });
+                    }, 600);
+                    setTimeout(() => clearInterval(extra), 8000);
+                }, 3000);
             }
 
-            // Если нажали "сюда не лезь" - запускаем наказание
-            if (task === 'punish') {
-                sound.play('hit');
-                state.currentTask = 'punish';
-                state.isPlaying = true;
-                state.animProgress = 0;
-                switchScreen('game-screen');
-                taskStatus.textContent = '⚠️ Ой-ой!';
-                runAnimation('punish');
-                return;
+            // ===== Главный цикл =====
+            function gameLoop() {
+                frame++;
+                updateManPosition();
+                updateParticles();
+                drawScene();
+                requestAnimationFrame(gameLoop);
             }
 
-            // Проверяем, есть ли такая задача
-            if (!state.tasks.hasOwnProperty(task)) return;
-
-            // Запускаем задачу
-            sound.play(task);
-            state.currentTask = task;
-            state.isPlaying = true;
-            state.animProgress = 0;
-            switchScreen('game-screen');
-            taskStatus.textContent = 'Выполняется...';
-            runAnimation(task);
-        }
-
-        function runAnimation(task) {
-            let duration = 3000; // 3 секунды
-            if (task === 'punish') duration = 2000;
-            if (task === 'win') duration = 4000;
-
-            const startTime = Date.now();
-            state.frame = 0;
-
-            function animate() {
-                const elapsed = Date.now() - startTime;
-                state.frame += 1;
-
-                // Отрисовка сцены
-                drawGameScene(task);
-
-                if (elapsed < duration) {
-                    requestAnimationFrame(animate);
-                } else {
-                    finishTask(task);
-                }
-            }
-
-            animate();
-        }
-
-        function finishTask(task) {
-            state.isPlaying = false;
-
-            if (task === 'punish') {
-                // Сброс всех задач
-                for (let t in state.tasks) {
-                    state.tasks[t] = false;
-                }
-                // Обновляем кнопки
-                updateButtons();
-                // Возврат на главный экран
-                switchScreen('main-screen');
-                taskStatus.textContent = 'Все задачи сброшены! 😅';
-                drawMainScreen();
-                return;
-            }
-
-            if (task === 'win') {
-                // Показываем победный оверлей
-                winOverlay.classList.add('show');
-                taskStatus.textContent = '🏆 ПОБЕДА!';
-                return;
-            }
-
-            // Отмечаем задачу выполненной
-            if (state.tasks.hasOwnProperty(task)) {
-                state.tasks[task] = true;
-            }
-
-            // Проверяем, все ли задачи выполнены
-            const allDone = Object.values(state.tasks).every(v => v === true);
-            if (allDone) {
-                // Победа!
-                sound.play('win');
-                state.currentTask = 'win';
-                state.isPlaying = true;
-                switchScreen('game-screen');
-                runAnimation('win');
-                return;
-            }
-
-            // Возврат на главный экран
-            updateButtons();
-            switchScreen('main-screen');
-            drawMainScreen();
-            taskStatus.textContent = '✅ Задача выполнена!';
-        }
-
-        function updateButtons() {
-            document.querySelectorAll('.task-btn').forEach(btn => {
-                const task = btn.dataset.task;
-                if (state.tasks[task]) {
-                    btn.classList.add('done');
-                } else {
-                    btn.classList.remove('done');
+            // ===== Обработчики =====
+            buttons.forEach((btn, i) => {
+                if (i < 5) {
+                    btn.addEventListener('click', () => animateTask(i));
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        animateTask(i);
+                    }, { passive: false });
                 }
             });
-        }
 
-        // ============================================================
-        // 6. ОБРАБОТЧИКИ СОБЫТИЙ
-        // ============================================================
-
-        // Кнопки задач
-        document.querySelectorAll('.task-btn, .danger-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                sound.resume();
-                const task = this.dataset.task;
-                startTask(task);
+            restartBtn.addEventListener('click', () => {
+                for (let i = 0; i < 5; i++) tasks[i] = false;
+                victoryShown = false;
+                victory.classList.remove('show');
+                man.action = 'idle';
+                man.x = 400;
+                wife.visible = false;
+                dog.visible = false;
+                car.visible = false;
+                lawnmower.visible = false;
+                foodBowl.visible = false;
+                particles = [];
+                animating = false;
+                updateUI();
             });
 
-            btn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                sound.resume();
-                const task = this.dataset.task;
-                startTask(task);
-            }, { passive: false });
-        });
-
-        // Кнопка закрытия победы (клик по оверлею)
-        winOverlay.addEventListener('click', function() {
-            this.classList.remove('show');
-            // Сброс всех задач после победы
-            for (let t in state.tasks) {
-                state.tasks[t] = false;
+            // ===== Полифилл =====
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                    if (r > w / 2) r = w / 2;
+                    if (r > h / 2) r = h / 2;
+                    this.moveTo(x + r, y);
+                    this.lineTo(x + w - r, y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r);
+                    this.lineTo(x + w, y + h - r);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    this.lineTo(x + r, y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r);
+                    this.lineTo(x, y + r);
+                    this.quadraticCurveTo(x, y, x + r, y);
+                    return this;
+                };
             }
-            updateButtons();
-            switchScreen('main-screen');
-            drawMainScreen();
-            taskStatus.textContent = '🎉 Поздравляем! Игра заново!';
-        });
 
-        winOverlay.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            this.classList.remove('show');
-            for (let t in state.tasks) {
-                state.tasks[t] = false;
-            }
-            updateButtons();
-            switchScreen('main-screen');
-            drawMainScreen();
-            taskStatus.textContent = '🎉 Поздравляем! Игра заново!';
-        }, { passive: false });
+            // ===== Старт =====
+            updateUI();
+            gameLoop();
 
-        // ============================================================
-        // 7. РАЗМЕР И АДАПТАЦИЯ
-        // ============================================================
-
-        function resizeCanvases() {
-            const container = document.getElementById('game-container');
-            const rect = container.getBoundingClientRect();
-            containerWidth = rect.width;
-            containerHeight = rect.height;
-
-            // Устанавливаем размер canvas в пикселях (с учетом плотности)
-            const dpr = window.devicePixelRatio || 1;
-            const logicalWidth = containerWidth;
-            const logicalHeight = containerHeight;
-
-            [mainCanvas, gameCanvas].forEach(c => {
-                c.width = logicalWidth * dpr;
-                c.height = logicalHeight * dpr;
-                c.style.width = logicalWidth + 'px';
-                c.style.height = logicalHeight + 'px';
-                c.getContext('2d').scale(dpr, dpr);
-            });
-
-            // Перерисовываем
-            if (mainScreen.classList.contains('active')) {
-                drawMainScreen();
-            }
-            if (gameScreen.classList.contains('active') && state.isPlaying) {
-                drawGameScene(state.currentTask);
-            }
-        }
-
-        // Обновляем размер при изменении
-        window.addEventListener('resize', resizeCanvases);
-        window.addEventListener('orientationchange', function() {
-            setTimeout(resizeCanvases, 300);
-        });
-
-        // ============================================================
-        // 8. ЗАПУСК
-        // ============================================================
-
-        function init() {
-            // Активируем звук по первому касанию
-            document.addEventListener('click', () => sound.resume(), { once: true });
-            document.addEventListener('touchstart', () => sound.resume(), { once: true });
-
-            resizeCanvases();
-            drawMainScreen();
-            updateButtons();
-            taskStatus.textContent = 'Выбери дело!';
-
-            // Анимация фона на главном экране
-            function bgLoop() {
-                if (mainScreen.classList.contains('active')) {
-                    drawMainScreen();
-                }
-                requestAnimationFrame(bgLoop);
-            }
-            // Запускаем только если активно
-            let bgInterval = setInterval(() => {
-                if (mainScreen.classList.contains('active')) {
-                    drawMainScreen();
-                }
-            }, 100);
-
-            // Обработка завершения анимации задач
-            console.log('Игра запущена! 🎮');
-        }
-
-        // Ждем загрузки DOM
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
+            console.log('🏠 Симулятор бытовых дел (человек реально ходит)');
+        })();
     </script>
+
 </body>
 </html>
