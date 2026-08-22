@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Симулятор бытовых дел</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 4 / 3;
+            background: #87CEEB;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            background: #87CEEB;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: transparent;
+        }
+
+        /* Главный экран - кнопки */
+        #main-screen {
+            position: relative;
+        }
+
+        #buttons-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            padding: 8px 10px 12px 10px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+            z-index: 10;
+        }
+
+        .task-btn,
+        .danger-btn {
+            padding: 8px 4px;
+            border: none;
+            border-radius: 12px;
+            font-size: clamp(11px, 2.2vw, 18px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            touch-action: manipulation;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+
+        .task-btn {
+            background: #ffd93d;
+            color: #333;
+        }
+
+        .task-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .task-btn.done {
+            background: #6bcb77;
+            color: #fff;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .task-btn.done::after {
+            content: " ✅";
+        }
+
+        .danger-btn {
+            background: #ff6b6b;
+            color: #fff;
+            animation: pulse-danger 1.5s infinite;
+        }
+
+        .danger-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes pulse-danger {
+            0%,
+            100% {
+                background: #ff6b6b;
+            }
+            50% {
+                background: #ee5a24;
+            }
+        }
+
+        /* Статус внутри мини-игры */
+        #task-status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: clamp(14px, 3vw, 24px);
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
+
+        /* Победный экран поверх */
+        #win-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 30;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            backdrop-filter: blur(4px);
+        }
+
+        #win-overlay.show {
+            display: flex;
+        }
+
+        #win-overlay h1 {
+            color: #ffd700;
+            font-size: clamp(32px, 8vw, 64px);
+            text-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+            margin-bottom: 10px;
+            animation: bounce-win 1s infinite;
+        }
+
+        #win-overlay p {
+            color: #fff;
+            font-size: clamp(18px, 4vw, 32px);
+        }
+
+        @keyframes bounce-win {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* Адаптив для телефонов */
+        @media (max-width: 600px) {
+            #buttons-container {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
+                padding: 6px 8px 10px 8px;
+            }
+
+            .task-btn,
+            .danger-btn {
+                padding: 6px 2px;
+                border-radius: 10px;
+                font-size: clamp(10px, 2.5vw, 14px);
+            }
+
+            #task-status {
+                bottom: 12px;
+                padding: 6px 14px;
+                font-size: clamp(12px, 3vw, 18px);
+            }
+        }
+
+        @media (max-width: 400px) {
+            #buttons-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 4px;
+                padding: 6px 6px 10px 6px;
+            }
+
+            .task-btn,
+            .danger-btn {
+                font-size: clamp(9px, 2.8vw, 12px);
+                padding: 5px 2px;
+            }
+        }
+
+        /* Скрываем скролл */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Главный экран -->
+        <div id="main-screen" class="screen active">
+            <canvas id="mainCanvas"></canvas>
+            <div id="buttons-container">
+                <button class="task-btn" data-task="mow">🌿 Покосить газон</button>
+                <button class="task-btn" data-task="feed">🐕 Покормить Лео</button>
+                <button class="task-btn" data-task="fix">🔧 Починить машину</button>
+                <button class="task-btn" data-task="train">💪 Потренироваться</button>
+                <button class="task-btn" data-task="kiss">❤️ Поцеловать жену</button>
+                <button class="danger-btn" data-task="punish">⚠️ Сюда не лезь</button>
+            </div>
+        </div>
+
+        <!-- Экран мини-игры -->
+        <div id="game-screen" class="screen">
+            <canvas id="gameCanvas"></canvas>
+            <div id="task-status">Выполняется...</div>
+        </div>
+
+        <!-- Победный оверлей -->
+        <div id="win-overlay">
+            <h1>🏆 ПОБЕДА!</h1>
+            <p>Жена вручает тебе кубок! 🎉</p>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. ЗВУКИ через Web Audio API (синтезированные)
+        // ============================================================
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                try {
+                    this.ctx = new(window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    this.enabled = false;
+                }
+            }
+
+            resume() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            play(type) {
+                if (!this.enabled || !this.ctx) return;
+                this.resume();
+                const now = this.ctx.currentTime;
+
+                switch (type) {
+                    case 'mow': {
+                        // Газонокосилка - шум с колебаниями
+                        const bufferSize = this.ctx.sampleRate * 0.6;
+                        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            const t = i / this.ctx.sampleRate;
+                            data[i] = (Math.random() * 2 - 1) * Math.sin(t * 200) * Math.sin(t * 50) * 0.3;
+                        }
+                        const source = this.ctx.createBufferSource();
+                        source.buffer = buffer;
+                        const gain = this.ctx.createGain();
+                        gain.gain.setValueAtTime(0.4, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                        source.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        source.start(now);
+                        source.stop(now + 0.6);
+                        break;
+                    }
+                    case 'bark': {
+                        // Лай - короткий шум с тоном
+                        const osc = this.ctx.createOscillator();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(400, now);
+                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                        const gain2 = this.ctx.createGain();
+                        gain2.gain.setValueAtTime(0.5, now);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                        osc.connect(gain2);
+                        gain2.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.15);
+                        // Добавим шума
+                        const buf2 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
+                        const d2 = buf2.getChannelData(0);
+                        for (let i = 0; i < d2.length; i++) {
+                            d2[i] = (Math.random() * 2 - 1) * 0.2;
+                        }
+                        const src2 = this.ctx.createBufferSource();
+                        src2.buffer = buf2;
+                        const g2 = this.ctx.createGain();
+                        g2.gain.setValueAtTime(0.3, now);
+                        g2.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                        src2.connect(g2);
+                        g2.connect(this.ctx.destination);
+                        src2.start(now);
+                        src2.stop(now + 0.1);
+                        break;
+                    }
+                    case 'kiss': {
+                        // Поцелуй - быстрый щелчок с тоном
+                        const osc3 = this.ctx.createOscillator();
+                        osc3.type = 'sine';
+                        osc3.frequency.setValueAtTime(600, now);
+                        osc3.frequency.exponentialRampToValueAtTime(200, now + 0.08);
+                        const g3 = this.ctx.createGain();
+                        g3.gain.setValueAtTime(0.3, now);
+                        g3.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                        osc3.connect(g3);
+                        g3.connect(this.ctx.destination);
+                        osc3.start(now);
+                        osc3.stop(now + 0.1);
+                        // Щелчок
+                        const buf3 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.02, this.ctx.sampleRate);
+                        const d3 = buf3.getChannelData(0);
+                        for (let i = 0; i < d3.length; i++) {
+                            d3[i] = (Math.random() * 2 - 1) * 0.4 * Math.exp(-i / 100);
+                        }
+                        const src3 = this.ctx.createBufferSource();
+                        src3.buffer = buf3;
+                        const g3b = this.ctx.createGain();
+                        g3b.gain.setValueAtTime(0.5, now);
+                        g3b.gain.exponentialRampToValueAtTime(0.01, now + 0.02);
+                        src3.connect(g3b);
+                        g3b.connect(this.ctx.destination);
+                        src3.start(now);
+                        src3.stop(now + 0.02);
+                        break;
+                    }
+                    case 'hit': {
+                        // Удар дубинкой - ударный шум
+                        const buf4 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.3, this.ctx.sampleRate);
+                        const d4 = buf4.getChannelData(0);
+                        for (let i = 0; i < d4.length; i++) {
+                            d4[i] = (Math.random() * 2 - 1) * Math.exp(-i / 300) * 0.6;
+                        }
+                        const src4 = this.ctx.createBufferSource();
+                        src4.buffer = buf4;
+                        const g4 = this.ctx.createGain();
+                        g4.gain.setValueAtTime(0.7, now);
+                        g4.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                        src4.connect(g4);
+                        g4.connect(this.ctx.destination);
+                        src4.start(now);
+                        src4.stop(now + 0.3);
+                        // Низкий тон для эффекта
+                        const osc4 = this.ctx.createOscillator();
+                        osc4.type = 'sine';
+                        osc4.frequency.setValueAtTime(80, now);
+                        osc4.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                        const g4b = this.ctx.createGain();
+                        g4b.gain.setValueAtTime(0.5, now);
+                        g4b.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                        osc4.connect(g4b);
+                        g4b.connect(this.ctx.destination);
+                        osc4.start(now);
+                        osc4.stop(now + 0.2);
+                        break;
+                    }
+                    case 'win': {
+                        // Салюты - серия хлопков
+                        for (let i = 0; i < 6; i++) {
+                            const delay = i * 0.15;
+                            const osc5 = this.ctx.createOscillator();
+                            osc5.type = 'sine';
+                            osc5.frequency.setValueAtTime(300 + Math.random() * 400, now + delay);
+                            const g5 = this.ctx.createGain();
+                            g5.gain.setValueAtTime(0.2, now + delay);
+                            g5.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.15);
+                            osc5.connect(g5);
+                            g5.connect(this.ctx.destination);
+                            osc5.start(now + delay);
+                            osc5.stop(now + delay + 0.15);
+                            // Шумовой хлопок
+                            const buf5 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
+                            const d5 = buf5.getChannelData(0);
+                            for (let j = 0; j < d5.length; j++) {
+                                d5[j] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-j / 200);
+                            }
+                            const src5 = this.ctx.createBufferSource();
+                            src5.buffer = buf5;
+                            const g5b = this.ctx.createGain();
+                            g5b.gain.setValueAtTime(0.4, now + delay);
+                            g5b.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
+                            src5.connect(g5b);
+                            g5b.connect(this.ctx.destination);
+                            src5.start(now + delay);
+                            src5.stop(now + delay + 0.08);
+                        }
+                        break;
+                    }
+                    case 'train': {
+                        // Тяжелое дыхание/усилие - короткий шум
+                        const buf6 = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.3, this.ctx.sampleRate);
+                        const d6 = buf6.getChannelData(0);
+                        for (let i = 0; i < d6.length; i++) {
+                            d6[i] = (Math.random() * 2 - 1) * 0.15 * Math.sin(i / 50) * Math.exp(-i / 1000);
+                        }
+                        const src6 = this.ctx.createBufferSource();
+                        src6.buffer = buf6;
+                        const g6 = this.ctx.createGain();
+                        g6.gain.setValueAtTime(0.3, now);
+                        g6.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                        src6.connect(g6);
+                        g6.connect(this.ctx.destination);
+                        src6.start(now);
+                        src6.stop(now + 0.3);
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+        }
+
+        // ============================================================
+        // 2. ОСНОВНАЯ ЛОГИКА ИГРЫ
+        // ============================================================
+        const sound = new SoundFX();
+
+        // Состояние
+        const state = {
+            tasks: {
+                mow: false,
+                feed: false,
+                fix: false,
+                train: false,
+                kiss: false
+            },
+            currentTask: null, // 'mow', 'feed', 'fix', 'train', 'kiss', 'punish', 'win'
+            isPlaying: false,
+            animationFrame: null,
+            frame: 0,
+            // Для анимаций
+            animProgress: 0,
+            // Флаги для анимации персонажей
+            wifeVisible: false,
+            leoVisible: false,
+            carVisible: false,
+            grassCut: 0,
+            // Позиции
+            manX: 0.5,
+            manY: 0.5,
+        };
+
+        // Ссылки на canvas
+        const mainCanvas = document.getElementById('mainCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const gameCanvas = document.getElementById('gameCanvas');
+        const gameCtx = gameCanvas.getContext('2d');
+
+        const mainScreen = document.getElementById('main-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const taskStatus = document.getElementById('task-status');
+        const winOverlay = document.getElementById('win-overlay');
+
+        let containerWidth = 0;
+        let containerHeight = 0;
+
+        // ============================================================
+        // 3. РИСОВАНИЕ ПЕРСОНАЖЕЙ
+        // ============================================================
+
+        // Отрисовка человека (лысый мужчина)
+        function drawMan(ctx, x, y, scale = 1, pose = 'stand') {
+            const s = scale * 80;
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Тело
+            ctx.fillStyle = '#4a6fa5';
+            ctx.fillRect(-s * 0.2, -s * 0.1, s * 0.4, s * 0.4);
+
+            // Голова (лысая)
+            ctx.fillStyle = '#f5cba7';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.3, s * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#d4a574';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Глаза
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-s * 0.08, -s * 0.32, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.08, -s * 0.32, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Нос
+            ctx.fillStyle = '#e8b88a';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.26, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Рот (улыбка)
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.2, s * 0.08, 0, Math.PI);
+            ctx.stroke();
+
+            // Ноги (джинсы)
+            ctx.fillStyle = '#2c3e50';
+            if (pose === 'walk') {
+                const step = Math.sin(state.frame / 10) * s * 0.15;
+                ctx.fillRect(-s * 0.15, s * 0.3, s * 0.12, s * 0.35);
+                ctx.fillRect(s * 0.03 + step, s * 0.3, s * 0.12, s * 0.35);
+            } else if (pose === 'pushup') {
+                // Отжимания - тело наклонено
+                ctx.fillStyle = '#4a6fa5';
+                ctx.fillRect(-s * 0.25, s * 0.1, s * 0.5, s * 0.15);
+                ctx.fillStyle = '#2c3e50';
+                ctx.fillRect(-s * 0.15, s * 0.25, s * 0.12, s * 0.15);
+                ctx.fillRect(s * 0.03, s * 0.25, s * 0.12, s * 0.15);
+                // Руки согнуты
+                ctx.fillStyle = '#f5cba7';
+                ctx.fillRect(-s * 0.3, s * 0.1, s * 0.08, s * 0.15);
+                ctx.fillRect(s * 0.22, s * 0.1, s * 0.08, s * 0.15);
+                ctx.restore();
+                return;
+            } else {
+                ctx.fillRect(-s * 0.15, s * 0.3, s * 0.12, s * 0.35);
+                ctx.fillRect(s * 0.03, s * 0.3, s * 0.12, s * 0.35);
+            }
+
+            // Руки
+            ctx.fillStyle = '#f5cba7';
+            if (pose === 'hug') {
+                // Руки раскинуты для объятий
+                ctx.save();
+                ctx.translate(-s * 0.3, -s * 0.05);
+                ctx.rotate(-0.5);
+                ctx.fillRect(0, 0, s * 0.08, s * 0.3);
+                ctx.restore();
+                ctx.save();
+                ctx.translate(s * 0.3, -s * 0.05);
+                ctx.rotate(0.5);
+                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.3);
+                ctx.restore();
+            } else if (pose === 'kiss') {
+                // Одна рука поднята
+                ctx.save();
+                ctx.translate(-s * 0.3, -s * 0.05);
+                ctx.rotate(-0.3);
+                ctx.fillRect(0, 0, s * 0.08, s * 0.25);
+                ctx.restore();
+                ctx.save();
+                ctx.translate(s * 0.3, -s * 0.15);
+                ctx.rotate(-1.2);
+                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.25);
+                ctx.restore();
+            } else if (pose === 'fix') {
+                // Руки с гаечным ключом
+                ctx.save();
+                ctx.translate(-s * 0.25, -s * 0.05);
+                ctx.rotate(-0.8);
+                ctx.fillRect(0, 0, s * 0.08, s * 0.3);
+                ctx.restore();
+                ctx.save();
+                ctx.translate(s * 0.25, -s * 0.05);
+                ctx.rotate(0.8);
+                ctx.fillRect(-s * 0.08, 0, s * 0.08, s * 0.3);
+                ctx.restore();
+                // Гаечный ключ
+                ctx.fillStyle = '#7f8c8d';
+                ctx.fillRect(s * 0.2, -s * 0.2, s * 0.25, s * 0.05);
+                ctx.fillRect(s * 0.35, -s * 0.25, s * 0.05, s * 0.15);
+            } else if (pose === 'feed') {
+                // Руки с миской
+                ctx.fillRect(-s * 0.3, -s * 0.05, s * 0.08, s * 0.2);
+                ctx.fillRect(s * 0.22, -s * 0.05, s * 0.08, s * 0.2);
+                // Миска
+                ctx.fillStyle = '#95a5a6';
+                ctx.beginPath();
+                ctx.arc(0, s * 0.1, s * 0.12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#e67e22';
+                ctx.beginPath();
+                ctx.arc(0, s * 0.1, s * 0.06, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (pose === 'stand') {
+                ctx.fillRect(-s * 0.25, -s * 0.05, s * 0.08, s * 0.25);
+                ctx.fillRect(s * 0.17, -s * 0.05, s * 0.08, s * 0.25);
+            }
+
+            ctx.restore();
+        }
+
+        // Отрисовка жены
+        function drawWife(ctx, x, y, scale = 1, pose = 'stand') {
+            const s = scale * 80;
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Платье
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.3, -s * 0.1);
+            ctx.quadraticCurveTo(-s * 0.35, s * 0.2, -s * 0.2, s * 0.35);
+            ctx.lineTo(s * 0.2, s * 0.35);
+            ctx.quadraticCurveTo(s * 0.35, s * 0.2, s * 0.3, -s * 0.1);
+            ctx.fill();
+
+            // Тело (верх)
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(-s * 0.2, -s * 0.15, s * 0.4, s * 0.15);
+
+            // Голова
+            ctx.fillStyle = '#f5cba7';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.3, s * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#d4a574';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Волосы (темные, до плеч)
+            ctx.fillStyle = '#2c2c2c';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.3, s * 0.22, 0, Math.PI);
+            ctx.fill();
+            // Длинные волосы по бокам
+            ctx.fillRect(-s * 0.2, -s * 0.35, s * 0.05, s * 0.25);
+            ctx.fillRect(s * 0.15, -s * 0.35, s * 0.05, s * 0.25);
+            // Челка
+            ctx.fillRect(-s * 0.15, -s * 0.45, s * 0.3, s * 0.08);
+
+            // Глаза
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(-s * 0.08, -s * 0.32, s * 0.035, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.08, -s * 0.32, s * 0.035, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ресницы
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(side * 0.08 + i * 0.02, -s * 0.34);
+                    ctx.lineTo(side * 0.08 + i * 0.02 + side * 0.03, -s * 0.37 + i * 0.015);
+                    ctx.stroke();
+                }
+            }
+
+            // Губы (красные)
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(0, -s * 0.24, s * 0.05, 0, Math.PI);
+            ctx.fill();
+
+            // Ноги (туфли)
+            ctx.fillStyle = '#2c2c2c';
+            ctx.fillRect(-s * 0.15, s * 0.35, s * 0.1, s * 0.12);
+            ctx.fillRect(s * 0.05, s * 0.35, s * 0.1, s * 0.12);
+
+            // Руки
+            ctx.fillStyle = '#f5cba7';
+            if (pose === 'hug' || pose === 'kiss') {
+                ctx.save();
+                ctx.translate(-s * 0.3, -s * 0.05);
+                ctx.rotate(-0.4);
+                ctx.fillRect(0, 0, s * 0.07, s * 0.25);
+                ctx.restore();
+                ctx.save();
+                ctx.translate(s * 0.3, -s * 0.05);
+                ctx.rotate(0.4);
+                ctx.fillRect(-s * 0.07, 0, s * 0.07, s * 0.25);
+                ctx.restore();
+            } else if (pose === 'hit') {
+                // Дубинка в руке
+                ctx.save();
+                ctx.translate(-s * 0.3, -s * 0.1);
+                ctx.rotate(-1.2);
+                ctx.fillRect(0, 0, s * 0.07, s * 0.3);
+                ctx.restore();
+                ctx.fillRect(s * 0.23, -s * 0.05, s * 0.07, s * 0.2);
+                // Дубинка
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(s * 0.15, -s * 0.35, s * 0.04, s * 0.4);
+                ctx.fillStyle = '#A0522D';
+                ctx.fillRect(s * 0.1, -s * 0.38, s * 0.14, s * 0.06);
+            } else {
+                ctx.fillRect(-s * 0.25, -s * 0.05, s * 0.07, s * 0.2);
+                ctx.fillRect(s * 0.18, -s * 0.05, s * 0.07, s * 0.2);
+            }
+
+            // Если поза "kiss" - сердечки
+            if (pose === 'kiss') {
+                for (let i = 0; i < 5; i++) {
+                    const angle = state.frame / 20 + i * 1.2;
+                    const r = s * 0.3 + Math.sin(state.frame / 10 + i) * s * 0.1;
+                    const hx = Math.cos(angle) * r;
+                    const hy = Math.sin(angle) * r * 0.6 - s * 0.3;
+                    ctx.fillStyle = `rgba(255, 0, 0, ${0.3 + Math.sin(state.frame / 5 + i) * 0.2})`;
+                    drawHeart(ctx, hx, hy, s * 0.06);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawHeart(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.beginPath();
+            ctx.moveTo(0, -size * 0.3);
+            ctx.bezierCurveTo(-size * 0.5, -size * 0.5, -size * 0.5, size * 0.2, 0, size * 0.4);
+            ctx.bezierCurveTo(size * 0.5, size * 0.2, size * 0.5, -size * 0.5, 0, -size * 0.3);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Отрисовка собаки Лео (рыжий хаски)
+        function drawLeo(ctx, x, y, scale = 1, pose = 'stand') {
+            const s = scale * 70;
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Тело
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.ellipse(0, s * 0.05, s * 0.3, s * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Голова
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.arc(s * 0.3, -s * 0.1, s * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Морда (светлая)
+            ctx.fillStyle = '#E8C9A0';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.38, -s * 0.05, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Нос
+            ctx.fillStyle = '#2c2c2c';
+            ctx.beginPath();
+            ctx.arc(s * 0.44, -s * 0.06, s * 0.035, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Уши (стоячие)
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.moveTo(s * 0.22, -s * 0.22);
+            ctx.lineTo(s * 0.18, -s * 0.38);
+            ctx.lineTo(s * 0.3, -s * 0.28);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(s * 0.38, -s * 0.22);
+            ctx.lineTo(s * 0.42, -s * 0.38);
+            ctx.lineTo(s * 0.3, -s * 0.28);
+            ctx.fill();
+
+            // Глаза
+            ctx.fillStyle = '#4a90d9';
+            ctx.beginPath();
+            ctx.arc(s * 0.28, -s * 0.12, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.38, -s * 0.12, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(s * 0.29, -s * 0.11, s * 0.02, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.39, -s * 0.11, s * 0.02, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Хвост
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.3, s * 0.05);
+            ctx.quadraticCurveTo(-s * 0.4, -s * 0.1, -s * 0.3, -s * 0.2);
+            ctx.lineTo(-s * 0.25, -s * 0.15);
+            ctx.quadraticCurveTo(-s * 0.32, -s * 0.05, -s * 0.25, s * 0.05);
+            ctx.fill();
+
+            // Лапы
+            ctx.fillStyle = '#D4A574';
+            if (pose === 'eat') {
+                // Сидит, ест
+                ctx.fillRect(-s * 0.2, s * 0.2, s * 0.1, s * 0.1);
+                ctx.fillRect(s * 0.05, s * 0.2, s * 0.1, s * 0.1);
+                // Голова наклонена вниз
+                ctx.fillRect(s * 0.15, s * 0.0, s * 0.08, s * 0.15);
+            } else {
+                ctx.fillRect(-s * 0.2, s * 0.2, s * 0.08, s * 0.12);
+                ctx.fillRect(-s * 0.05, s * 0.2, s * 0.08, s * 0.12);
+                ctx.fillRect(s * 0.1, s * 0.2, s * 0.08, s * 0.12);
+                ctx.fillRect(s * 0.2, s * 0.2, s * 0.08, s * 0.12);
+            }
+
+            ctx.restore();
+        }
+
+        // Отрисовка машины BMW X5
+        function drawCar(ctx, x, y, scale = 1) {
+            const s = scale * 70;
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Кузов (серебристый)
+            ctx.fillStyle = '#bdc3c7';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.5, s * 0.1);
+            ctx.quadraticCurveTo(-s * 0.55, -s * 0.1, -s * 0.4, -s * 0.2);
+            ctx.lineTo(-s * 0.05, -s * 0.2);
+            ctx.quadraticCurveTo(0, -s * 0.3, s * 0.1, -s * 0.25);
+            ctx.lineTo(s * 0.3, -s * 0.25);
+            ctx.quadraticCurveTo(s * 0.4, -s * 0.2, s * 0.45, -s * 0.1);
+            ctx.lineTo(s * 0.5, s * 0.1);
+            ctx.fill();
+
+            // Крыша (стекло)
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(-s * 0.35, -s * 0.22, s * 0.3, s * 0.1);
+
+            // Окна
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(-s * 0.3, -s * 0.2, s * 0.1, s * 0.07);
+            ctx.fillRect(-s * 0.15, -s * 0.2, s * 0.1, s * 0.07);
+            ctx.fillRect(0, -s * 0.2, s * 0.1, s * 0.07);
+            ctx.fillRect(s * 0.15, -s * 0.2, s * 0.1, s * 0.07);
+
+            // Фары
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(-s * 0.48, s * 0.0, s * 0.06, s * 0.06);
+            ctx.fillRect(s * 0.42, s * 0.0, s * 0.06, s * 0.06);
+
+            // Колеса
+            ctx.fillStyle = '#2c2c2c';
+            ctx.beginPath();
+            ctx.arc(-s * 0.3, s * 0.15, s * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.3, s * 0.15, s * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7f8c8d';
+            ctx.beginPath();
+            ctx.arc(-s * 0.3, s * 0.15, s * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(s * 0.3, s * 0.15, s * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Бампер
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillRect(-s * 0.5, s * 0.08, s * 0.08, s * 0.04);
+            ctx.fillRect(s * 0.42, s * 0.08, s * 0.08, s * 0.04);
+
+            ctx.restore();
+        }
+
+        // ============================================================
+        // 4. ОСНОВНЫЕ СЦЕНЫ
+        // ============================================================
+
+        // Главный экран
+        function drawMainScreen() {
+            const w = mainCanvas.width;
+            const h = mainCanvas.height;
+            mainCtx.clearRect(0, 0, w, h);
+
+            // Небо и трава
+            const grad = mainCtx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#87CEEB');
+            grad.addColorStop(0.7, '#87CEEB');
+            grad.addColorStop(0.85, '#2ecc71');
+            grad.addColorStop(1, '#27ae60');
+            mainCtx.fillStyle = grad;
+            mainCtx.fillRect(0, 0, w, h);
+
+            // Домик на заднем плане
+            mainCtx.fillStyle = '#e67e22';
+            mainCtx.fillRect(w * 0.05, h * 0.3, w * 0.15, h * 0.3);
+            mainCtx.fillStyle = '#c0392b';
+            mainCtx.beginPath();
+            mainCtx.moveTo(w * 0.02, h * 0.3);
+            mainCtx.lineTo(w * 0.23, h * 0.3);
+            mainCtx.lineTo(w * 0.125, h * 0.15);
+            mainCtx.fill();
+
+            // Человек в центре
+            const manX = w * 0.5;
+            const manY = h * 0.6;
+            drawMan(mainCtx, manX, manY, Math.min(w, h) / 600);
+
+            // Подпись
+            mainCtx.fillStyle = '#2c3e50';
+            mainCtx.font = `${Math.min(w, h) * 0.035}px Arial`;
+            mainCtx.textAlign = 'center';
+            mainCtx.fillText('Что сделаем?', w * 0.5, h * 0.15);
+        }
+
+        // Мини-игры
+        function drawGameScene(task) {
+            const w = gameCanvas.width;
+            const h = gameCanvas.height;
+            gameCtx.clearRect(0, 0, w, h);
+
+            const sc = Math.min(w, h) / 600;
+
+            // Фон
+            const grad = gameCtx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#87CEEB');
+            grad.addColorStop(0.7, '#87CEEB');
+            grad.addColorStop(0.85, '#2ecc71');
+            grad.addColorStop(1, '#27ae60');
+            gameCtx.fillStyle = grad;
+            gameCtx.fillRect(0, 0, w, h);
+
+            const cx = w / 2;
+            const cy = h / 2;
+
+            state.animProgress += 0.02;
+
+            switch (task) {
+                case 'mow': {
+                    // Газон
+                    for (let i = 0; i < 30; i++) {
+                        const gx = (i / 30) * w;
+                        const gy = h * 0.6 + Math.sin(i * 1.5 + state.frame / 20) * h * 0.1;
+                        gameCtx.fillStyle = '#27ae60';
+                        gameCtx.fillRect(gx, gy, 5, h * 0.15);
+                        gameCtx.fillStyle = '#2ecc71';
+                        gameCtx.fillRect(gx + 2, gy + 5, 5, h * 0.1);
+                    }
+                    // Человек с газонокосилкой бегает
+                    const walkX = cx + Math.sin(state.frame / 15) * w * 0.25;
+                    drawMan(gameCtx, walkX, h * 0.65, sc, 'walk');
+                    // Газонокосилка
+                    gameCtx.fillStyle = '#e74c3c';
+                    gameCtx.fillRect(walkX + sc * 30, h * 0.65 + sc * 10, sc * 40, sc * 20);
+                    gameCtx.fillStyle = '#2c3e50';
+                    gameCtx.fillRect(walkX + sc * 35, h * 0.65 + sc * 25, sc * 5, sc * 10);
+                    gameCtx.fillRect(walkX + sc * 45, h * 0.65 + sc * 25, sc * 5, sc * 10);
+                    taskStatus.textContent = '🌿 Косим газон...';
+                    break;
+                }
+                case 'feed': {
+                    // Человек с миской
+                    drawMan(gameCtx, cx - sc * 80, h * 0.6, sc, 'feed');
+                    // Лео
+                    const leoX = cx + sc * 50 + Math.sin(state.frame / 20) * sc * 5;
+                    drawLeo(gameCtx, leoX, h * 0.7, sc, 'eat');
+                    // Миска на земле
+                    gameCtx.fillStyle = '#95a5a6';
+                    gameCtx.beginPath();
+                    gameCtx.arc(cx + sc * 30, h * 0.7 + sc * 10, sc * 15, 0, Math.PI * 2);
+                    gameCtx.fill();
+                    gameCtx.fillStyle = '#e67e22';
+                    gameCtx.beginPath();
+                    gameCtx.arc(cx + sc * 30, h * 0.7 + sc * 10, sc * 8, 0, Math.PI * 2);
+                    gameCtx.fill();
+                    taskStatus.textContent = '🐕 Кормим Лео...';
+                    break;
+                }
+                case 'fix': {
+                    // Машина
+                    drawCar(gameCtx, cx, h * 0.6, sc);
+                    // Человек с ключом
+                    drawMan(gameCtx, cx + sc * 60, h * 0.65, sc, 'fix');
+                    taskStatus.textContent = '🔧 Чиним машину...';
+                    break;
+                }
+                case 'train': {
+                    // Человек отжимается
+                    drawMan(gameCtx, cx, h * 0.7, sc, 'pushup');
+                    // Пот капает
+                    for (let i = 0; i < 3; i++) {
+                        const dropY = h * 0.5 + i * h * 0.08 + Math.sin(state.frame / 10 + i * 2) * h * 0.02;
+                        gameCtx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+                        gameCtx.beginPath();
+                        gameCtx.arc(cx + (i - 1) * sc * 20, dropY, 3, 0, Math.PI * 2);
+                        gameCtx.fill();
+                    }
+                    taskStatus.textContent = '💪 Тренируемся...';
+                    break;
+                }
+                case 'kiss': {
+                    // Мужчина и жена
+                    drawMan(gameCtx, cx - sc * 50, h * 0.6, sc, 'kiss');
+                    drawWife(gameCtx, cx + sc * 50, h * 0.6, sc, 'kiss');
+                    taskStatus.textContent = '❤️ Поцелуй!';
+                    break;
+                }
+                case 'punish': {
+                    // Жена с дубинкой бьет мужа
+                    drawMan(gameCtx, cx - sc * 40, h * 0.6, sc, 'stand');
+                    // Эффект удара
+                    if (state.frame % 10 < 5) {
+                        drawWife(gameCtx, cx + sc * 30, h * 0.6, sc, 'hit');
+                    } else {
+                        drawWife(gameCtx, cx + sc * 30, h * 0.6, sc, 'stand');
+                    }
+                    // Звездочки удара
+                    for (let i = 0; i < 5; i++) {
+                        const angle = state.frame / 10 + i * 1.5;
+                        const dist = sc * 40 + Math.sin(state.frame / 5 + i) * sc * 15;
+                        gameCtx.fillStyle = '#f1c40f';
+                        gameCtx.font = `${sc * 25}px Arial`;
+                        gameCtx.fillText('💥', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist * 0.5);
+                    }
+                    taskStatus.textContent = '⚠️ Ой-ой! Жена разозлилась!';
+                    break;
+                }
+                case 'win': {
+                    // Победная сцена
+                    drawMan(gameCtx, cx - sc * 60, h * 0.6, sc, 'hug');
+                    drawWife(gameCtx, cx + sc * 50, h * 0.6, sc, 'hug');
+                    // Кубок
+                    gameCtx.fillStyle = '#f1c40f';
+                    gameCtx.beginPath();
+                    gameCtx.arc(cx, h * 0.35, sc * 20, 0, Math.PI * 2);
+                    gameCtx.fill();
+                    gameCtx.fillStyle = '#d4ac0d';
+                    gameCtx.fillRect(cx - sc * 5, h * 0.35 + sc * 20, sc * 10, sc * 25);
+                    gameCtx.fillStyle = '#f1c40f';
+                    gameCtx.font = `${sc * 40}px Arial`;
+                    gameCtx.textAlign = 'center';
+                    gameCtx.fillText('🏆', cx, h * 0.35 + sc * 15);
+
+                    // Салюты
+                    for (let i = 0; i < 15; i++) {
+                        const angle = state.frame / 30 + i * 0.8;
+                        const dist = sc * 80 + Math.sin(state.frame / 20 + i) * sc * 30;
+                        const colors = ['#ff0000', '#ffd700', '#00ff00', '#00bfff', '#ff69b4', '#ff4500'];
+                        gameCtx.fillStyle = colors[i % colors.length];
+                        const size = 3 + Math.sin(state.frame / 10 + i * 1.3) * 2;
+                        gameCtx.beginPath();
+                        gameCtx.arc(
+                            cx + Math.cos(angle) * dist,
+                            h * 0.15 + Math.sin(angle * 0.7) * dist * 0.3,
+                            size, 0, Math.PI * 2
+                        );
+                        gameCtx.fill();
+                    }
+                    taskStatus.textContent = '🎉 ПОБЕДА! Все дела сделаны!';
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        // ============================================================
+        // 5. УПРАВЛЕНИЕ ИГРОЙ
+        // ============================================================
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function startTask(task) {
+            if (state.isPlaying) return;
+
+            // Если задача уже выполнена
+            if (state.tasks[task]) {
+                return;
+            }
+
+            // Если нажали "сюда не лезь" - запускаем наказание
+            if (task === 'punish') {
+                sound.play('hit');
+                state.currentTask = 'punish';
+                state.isPlaying = true;
+                state.animProgress = 0;
+                switchScreen('game-screen');
+                taskStatus.textContent = '⚠️ Ой-ой!';
+                runAnimation('punish');
+                return;
+            }
+
+            // Проверяем, есть ли такая задача
+            if (!state.tasks.hasOwnProperty(task)) return;
+
+            // Запускаем задачу
+            sound.play(task);
+            state.currentTask = task;
+            state.isPlaying = true;
+            state.animProgress = 0;
+            switchScreen('game-screen');
+            taskStatus.textContent = 'Выполняется...';
+            runAnimation(task);
+        }
+
+        function runAnimation(task) {
+            let duration = 3000; // 3 секунды
+            if (task === 'punish') duration = 2000;
+            if (task === 'win') duration = 4000;
+
+            const startTime = Date.now();
+            state.frame = 0;
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                state.frame += 1;
+
+                // Отрисовка сцены
+                drawGameScene(task);
+
+                if (elapsed < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    finishTask(task);
+                }
+            }
+
+            animate();
+        }
+
+        function finishTask(task) {
+            state.isPlaying = false;
+
+            if (task === 'punish') {
+                // Сброс всех задач
+                for (let t in state.tasks) {
+                    state.tasks[t] = false;
+                }
+                // Обновляем кнопки
+                updateButtons();
+                // Возврат на главный экран
+                switchScreen('main-screen');
+                taskStatus.textContent = 'Все задачи сброшены! 😅';
+                drawMainScreen();
+                return;
+            }
+
+            if (task === 'win') {
+                // Показываем победный оверлей
+                winOverlay.classList.add('show');
+                taskStatus.textContent = '🏆 ПОБЕДА!';
+                return;
+            }
+
+            // Отмечаем задачу выполненной
+            if (state.tasks.hasOwnProperty(task)) {
+                state.tasks[task] = true;
+            }
+
+            // Проверяем, все ли задачи выполнены
+            const allDone = Object.values(state.tasks).every(v => v === true);
+            if (allDone) {
+                // Победа!
+                sound.play('win');
+                state.currentTask = 'win';
+                state.isPlaying = true;
+                switchScreen('game-screen');
+                runAnimation('win');
+                return;
+            }
+
+            // Возврат на главный экран
+            updateButtons();
+            switchScreen('main-screen');
+            drawMainScreen();
+            taskStatus.textContent = '✅ Задача выполнена!';
+        }
+
+        function updateButtons() {
+            document.querySelectorAll('.task-btn').forEach(btn => {
+                const task = btn.dataset.task;
+                if (state.tasks[task]) {
+                    btn.classList.add('done');
+                } else {
+                    btn.classList.remove('done');
+                }
+            });
+        }
+
+        // ============================================================
+        // 6. ОБРАБОТЧИКИ СОБЫТИЙ
+        // ============================================================
+
+        // Кнопки задач
+        document.querySelectorAll('.task-btn, .danger-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                sound.resume();
+                const task = this.dataset.task;
+                startTask(task);
+            });
+
+            btn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                sound.resume();
+                const task = this.dataset.task;
+                startTask(task);
+            }, { passive: false });
+        });
+
+        // Кнопка закрытия победы (клик по оверлею)
+        winOverlay.addEventListener('click', function() {
+            this.classList.remove('show');
+            // Сброс всех задач после победы
+            for (let t in state.tasks) {
+                state.tasks[t] = false;
+            }
+            updateButtons();
+            switchScreen('main-screen');
+            drawMainScreen();
+            taskStatus.textContent = '🎉 Поздравляем! Игра заново!';
+        });
+
+        winOverlay.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            this.classList.remove('show');
+            for (let t in state.tasks) {
+                state.tasks[t] = false;
+            }
+            updateButtons();
+            switchScreen('main-screen');
+            drawMainScreen();
+            taskStatus.textContent = '🎉 Поздравляем! Игра заново!';
+        }, { passive: false });
+
+        // ============================================================
+        // 7. РАЗМЕР И АДАПТАЦИЯ
+        // ============================================================
+
+        function resizeCanvases() {
+            const container = document.getElementById('game-container');
+            const rect = container.getBoundingClientRect();
+            containerWidth = rect.width;
+            containerHeight = rect.height;
+
+            // Устанавливаем размер canvas в пикселях (с учетом плотности)
+            const dpr = window.devicePixelRatio || 1;
+            const logicalWidth = containerWidth;
+            const logicalHeight = containerHeight;
+
+            [mainCanvas, gameCanvas].forEach(c => {
+                c.width = logicalWidth * dpr;
+                c.height = logicalHeight * dpr;
+                c.style.width = logicalWidth + 'px';
+                c.style.height = logicalHeight + 'px';
+                c.getContext('2d').scale(dpr, dpr);
+            });
+
+            // Перерисовываем
+            if (mainScreen.classList.contains('active')) {
+                drawMainScreen();
+            }
+            if (gameScreen.classList.contains('active') && state.isPlaying) {
+                drawGameScene(state.currentTask);
+            }
+        }
+
+        // Обновляем размер при изменении
+        window.addEventListener('resize', resizeCanvases);
+        window.addEventListener('orientationchange', function() {
+            setTimeout(resizeCanvases, 300);
+        });
+
+        // ============================================================
+        // 8. ЗАПУСК
+        // ============================================================
+
+        function init() {
+            // Активируем звук по первому касанию
+            document.addEventListener('click', () => sound.resume(), { once: true });
+            document.addEventListener('touchstart', () => sound.resume(), { once: true });
+
+            resizeCanvases();
+            drawMainScreen();
+            updateButtons();
+            taskStatus.textContent = 'Выбери дело!';
+
+            // Анимация фона на главном экране
+            function bgLoop() {
+                if (mainScreen.classList.contains('active')) {
+                    drawMainScreen();
+                }
+                requestAnimationFrame(bgLoop);
+            }
+            // Запускаем только если активно
+            let bgInterval = setInterval(() => {
+                if (mainScreen.classList.contains('active')) {
+                    drawMainScreen();
+                }
+            }, 100);
+
+            // Обработка завершения анимации задач
+            console.log('Игра запущена! 🎮');
+        }
+
+        // Ждем загрузки DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
