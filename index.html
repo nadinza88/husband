@@ -99,7 +99,6 @@
             -webkit-tap-highlight-color: transparent;
             min-height: 48px;
         }
-        /* ПОСЛЕДНЯЯ КНОПКА НА ВСЮ ШИРИНУ */
         #buttons .btn:last-child {
             grid-column: 1 / -1;
         }
@@ -340,11 +339,9 @@
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
 
-            // Фиксированный размер игры
             const W = 800,
                 H = 600;
 
-            // Реальный размер канваса
             function resizeCanvas() {
                 const container = document.getElementById('game');
                 const rect = container.getBoundingClientRect();
@@ -357,7 +354,6 @@
                 return { w: rect.width, h: rect.height };
             }
 
-            // Масштабирование координат
             let scaleX = 1,
                 scaleY = 1;
 
@@ -409,14 +405,18 @@
                 }
             }
 
+            // ===== ЧАСТИЦЫ СМЕЩЕНЫ ВВЕРХ И ВПРАВО =====
             function addParticles(type, x, y, count, opts) {
+                // Смещение: выше на 40px, правее на 30px
+                const offsetX = 30;
+                const offsetY = -40;
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.random() * 2 - 1) * (opts?.spread || 1.5);
                     const speed = 50 + Math.random() * (opts?.speed || 120);
                     const size = 4 + Math.random() * (opts?.size || 8);
                     particles.push({
-                        x,
-                        y,
+                        x: x + offsetX + (Math.random() - 0.5) * 20,
+                        y: y + offsetY + (Math.random() - 0.5) * 20,
                         vx: Math.cos(angle) * speed * (opts?.dirX || 1),
                         vy: -Math.sin(angle) * speed * 0.7 - (opts?.rise || 40),
                         life: 60 + Math.random() * 40,
@@ -493,7 +493,7 @@
                 }
             }
 
-            // ===== Отрисовка сцены (все координаты в фиксированном W/H) =====
+            // ===== Отрисовка сцены =====
             function drawScene() {
                 ctx.save();
                 ctx.scale(scaleX, scaleY);
@@ -644,7 +644,7 @@
                 ctx.stroke();
             }
 
-            // ===== Мужчина (смещён выше) =====
+            // ===== Мужчина =====
             function drawMan(x, y) {
                 const jump = man.action === 'pushup' ? Math.abs(Math.sin(frame * 0.1)) * 16 : 0;
                 const actualY = y - jump;
@@ -741,7 +741,7 @@
                 }
             }
 
-            // ===== Жена (смещена выше) =====
+            // ===== Жена =====
             function drawWife(x, y) {
                 ctx.save();
                 ctx.translate(x, y);
@@ -841,7 +841,7 @@
                 ctx.restore();
             }
 
-            // ===== Собака (смещена выше) =====
+            // ===== Собака =====
             function drawDog(x, y) {
                 ctx.save();
                 ctx.translate(x, y);
@@ -1262,7 +1262,7 @@
             updateUI();
             gameLoop();
 
-            console.log('🏠 Симулятор бытовых дел (кнопка "Поцеловать жену" на всю ширину)');
+            console.log('🏠 Симулятор бытовых дел (частицы подняты выше и правее)');
         })();
     </script>
 
