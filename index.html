@@ -405,11 +405,10 @@
                 }
             }
 
-            // ===== ЧАСТИЦЫ СМЕЩЕНЫ ВВЕРХ И ВПРАВО =====
+            // ===== ЧАСТИЦЫ — ЕЩЁ ВЫШЕ И ПРАВЕЕ =====
             function addParticles(type, x, y, count, opts) {
-                // Смещение: выше на 40px, правее на 30px
-                const offsetX = 30;
-                const offsetY = -40;
+                const offsetX = 50; // правее на 50px
+                const offsetY = -60; // выше на 60px
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.random() * 2 - 1) * (opts?.spread || 1.5);
                     const speed = 50 + Math.random() * (opts?.speed || 120);
@@ -644,7 +643,7 @@
                 ctx.stroke();
             }
 
-            // ===== Мужчина =====
+            // ===== Мужчина с гаечным ключом =====
             function drawMan(x, y) {
                 const jump = man.action === 'pushup' ? Math.abs(Math.sin(frame * 0.1)) * 16 : 0;
                 const actualY = y - jump;
@@ -685,12 +684,55 @@
                 const armSwing = man.action === 'mowing' ? Math.sin(frame * 0.15) * 20 : 0;
                 const armSwing2 = man.action === 'mowing' ? Math.cos(frame * 0.15) * 10 : 0;
                 const jumpArm = man.action === 'pushup' ? Math.sin(frame * 0.12) * 20 : 0;
+
+                const isRepair = man.action === 'repair';
+                const wrenchAngle = isRepair ? Math.sin(frame * 0.2) * 30 : 0;
+
                 ctx.beginPath();
                 ctx.moveTo(-16, 4);
                 ctx.lineTo(-28 + armSwing + jumpArm, 20 + armSwing2 + jumpArm * 0.3);
-                ctx.moveTo(16, 4);
-                ctx.lineTo(28 - armSwing - jumpArm, 20 - armSwing2 - jumpArm * 0.3);
                 ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(16, 4);
+                const rx = 28 - armSwing - jumpArm;
+                const ry = 20 - armSwing2 - jumpArm * 0.3;
+                ctx.lineTo(rx, ry);
+                ctx.stroke();
+
+                if (isRepair) {
+                    ctx.save();
+                    ctx.translate(rx, ry);
+                    ctx.rotate(wrenchAngle * Math.PI / 180);
+
+                    ctx.fillStyle = '#888';
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 6;
+                    ctx.fillRect(-2, -4, 4, 20);
+
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 6;
+                    ctx.beginPath();
+                    ctx.arc(0, -6, 7, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#aaa';
+                    ctx.shadowBlur = 4;
+                    for (let i = 0; i < 6; i++) {
+                        const a = i * Math.PI / 3 + Math.PI / 6;
+                        ctx.fillRect(Math.cos(a) * 7 - 1.5, Math.sin(a) * 7 - 1.5, 3, 3);
+                    }
+
+                    ctx.fillStyle = '#666';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.arc(0, -6, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
 
                 ctx.fillStyle = '#F5D0B8';
                 ctx.beginPath();
@@ -714,7 +756,7 @@
                     ctx.beginPath();
                     ctx.arc(0, -12, 5, 0.15, Math.PI - 0.15);
                     ctx.stroke();
-                } else if (man.action === 'mowing') {
+                } else if (man.action === 'repair' || man.action === 'mowing') {
                     ctx.beginPath();
                     ctx.arc(0, -14, 6, 0.1, Math.PI - 0.1);
                     ctx.stroke();
@@ -1083,6 +1125,7 @@
                         }, 150);
                         break;
                     case 2:
+                        man.action = 'repair';
                         car.visible = true;
                         interval = setInterval(() => {
                             addParticles('spark', man.x - 20 + Math.random() * 60, man.y + 10, 4, {
@@ -1262,7 +1305,7 @@
             updateUI();
             gameLoop();
 
-            console.log('🏠 Симулятор бытовых дел (частицы подняты выше и правее)');
+            console.log('🔧 Анимация поднята выше и правее!');
         })();
     </script>
 
